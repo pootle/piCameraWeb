@@ -1,0 +1,251 @@
+body {
+    background-color: hsl(9, 45%, 23%);
+    color: hsl(171,45%,88%);
+}
+
+.grouphead {
+    font-weight: bold;
+    color: white;
+    font-size: 150%;
+    padding-right: 10em;
+}
+.cw-table
+{
+  padding: 0;
+  margin: 0;
+  border-collapse: collapse;
+  border: 1px solid hsl(9, 45%, 5%);
+  font-size: 1.2em;
+}
+
+.cw-table caption
+{
+  caption-side: bottom;
+  font-size: 1.0em;
+  font-style: italic;
+  text-align: right;
+  padding: 0.5em 0;
+}
+
+.cw-table th, .cw-table td
+{
+  border: 1px dotted #000;
+  padding: 0.5em;
+  text-align: left;
+}
+
+.cw-table th[scope=col]
+{
+  background-color: hsl(9, 30%, 33%);
+  text-align: center;
+  border-bottom: 2px solid #000;
+  border-right: 2px solid #000;
+}
+
+.cw-table th+th[scope=col]
+{
+  border-right: 1px dotted #000;
+}
+
+.cw-table th[scope=row]
+{
+  background-color:  hsl(9, 30%, 33%);
+  border-right: 2px solid #000;
+}
+
+.cw-label {
+    width:100%;
+    display:inline-block;
+    text-align: right;    
+}
+
+.cwgrouphead
+{
+    font-size: 1.2em;
+    font-weight: bolder;
+}
+
+.cw-table tr:nth-child(odd) td.value
+{
+  background-color: hsl(25, 30%, 12%);
+}
+
+.cw-table tr:hover th[scope=row], .main-table tr:hover td
+{
+  background-color: hsl(171,45%,88%);
+  color: hsl(9, 30%, 33%);
+}
+
+td.helpbtn
+{
+  background-color: hsl(240,75%,30%);
+  font-size: 1.2em;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+#livedivon {
+    position:relative;
+    width:640px;
+    height:480px;
+}
+
+.eventable {
+    position:absolute;
+    left: 5px;
+    top: 5px;
+    display:table;
+    width:640px;
+    table-layout:fixed;
+}
+
+.evencell {
+    text-align: center;
+    display:table-cell;
+    border:#00000000 3px;
+    align-content: center;
+    font-size: 160%;
+    background-color: green;
+    opacity: .4;
+}
+
+.evencell:hover {
+    opacity: .85;
+}
+
+.paramgroups {
+    display: table;
+    width: 100%;
+    border: 1px solid black;
+    border-right: none;
+    box-sizing: border-box;
+    overflow:hidden;
+}
+.paramgroups > div {
+    display: table-row;
+}
+.paramgroups > div >div {
+    border-right: 1px solid black;
+    display: table-cell;
+}
+
+.status_head {
+    margin-left: 1em;
+    margin-right: 1em;
+}
+.status_value {
+    width:100%;
+    display:inline-block;
+    text-align: center;    
+}
+
+.clicker {
+    width  :75%;
+    text-align: center;   
+    border-radius: 10px;
+    border : 2px solid #010301;
+    background: #639D1E;
+    padding: 3px;
+    cursor : pointer;
+}
+.clicker0 {
+    background: #639D1E;
+    box-shadow: 3px 5px #000000;
+}
+.clicker1 {
+    background: #9D631E;
+    box-shadow: -3px -5px #ffffff;
+}
+.clickerpend {
+    color: #000000;
+}
+
+.tabwrap{
+    min-width: 720px;
+    float: left;
+}
+
+.tabby{
+    
+}
+
+.tabby > input{
+  display : none;
+}
+
+.tabby > section > h1{
+  float       : left;
+  box-sizing  : border-box;
+  margin      : 0;
+  padding     : 0.5em 0.5em 0;
+  overflow    : hidden;
+  font-size   : 133%;
+  font-weight : normal;
+}
+
+.tabby > input:first-child + section > h1{
+  padding-left : 1em;
+}
+
+.tabby > section > h1{
+  border                  : 1px solid #ddd;
+  border-bottom           : none;
+  border-top-left-radius  : 4px;
+  border-top-right-radius : 4px;
+  width                   : 2.6em;
+  height                  : 7em;
+  padding                 : 0.25em 0.75em;
+  margin                  : 0.25em;
+  cursor                  : pointer;
+}
+
+.tabby > section > h1 > label{
+  display                 : block;
+  box-shadow              : 0 0 0.5em rgba(0,0,0,0.0625);
+  background              : hsl(9,45%,23%);
+  text-align              : right;
+  cursor                  : pointer;
+     -moz-user-select     : none;
+      -ms-user-select     : none;
+  -webkit-user-select     : none;
+  -webkit-transform: rotate(90deg);  /* Chrome, Opera 15+, Safari 3.1+ */
+      -ms-transform: rotate(90deg);  /* IE 9 */
+          transform: rotate(90deg);  /* Firefox 16+, IE 10+, Opera */
+}
+
+.tabby > section > div{
+  position      : relative;
+  z-index       : 1;
+  float         : right;
+  box-sizing    : border-box;
+  width         : 100%;
+  margin        : 9.5em 0 0 -100%;
+  padding       : 0.5em 0.75em;
+  border        : 1px solid #ddd;
+  border-radius : 4px;
+  box-shadow    : 0 0 0.5em rgba(0,0,0,0.0625);
+  background    : hsl(9,45%,23%);
+}
+
+.tabby > input:checked + section > h1{
+  position : relative;
+  z-index  : 2;
+  font-weight: bold;
+}
+
+.tabby > input:not(:checked) + section > div{
+  display : none;
+}
+.aftertabby {
+    float: left;   
+}
+
+.intlink{
+    color: white;
+    text-align: center;   
+    border-radius: 10px;
+    border : 2px solid #010301;
+    background: #639D1E;
+    padding: 3px;
+    cursor : pointer;
+}

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+   <head>
+       <link rel="stylesheet" type="text/css" href="camweb.css">
+       <script src="smoothie.js"></script>
+       <script src="pipyscripts.js"></script>
+       <script src="newweb.js"></script>
+   </head>
+   <body>
+       <div id="header">
+           <table width="100%">
+               <tr><td rowspan="2"><h2>Pootle's pi camera demo</h2></td><td id="appstatus">app status goes here</td></td></tr>
+               <tr><td id="appmessage">messages go here</td></tr>
+           </table>
+           <table>
+               <tr><th>CPU temperature</th>
+                   <th title="total cpu load - instant and smoothed" ><span>CPU load </span><span id="picpuavg" ></span></th>
+                   <th><span class="status_head" >Camera</span></th>
+                   <th><span class="status_head" >live video</span></th>
+                   <th><span class="status_head" >triggered video</span></th>
+                   <th><span class="status_head" >time lapse</span></th>
+                   <th><span class="status_head" >streaming</span></th>
+               </tr>
+               <tr>
+                   <td rowspan="2"><canvas id="pitempchart" width="200" height="60"></canvas></td>
+                   <td rowspan="2"><canvas id="picputime" width="200" height="60"></canvas></td>
+                   <td><span class="status_value" id="camactivest" >xx</span></td>
+                   <td><span class="status_value" id="livevidst" >yy</span></td>
+                   <td><span class="status_value" id="tripvidst" >zz</span></td>
+               </tr>
+               <tr>
+                   {strmctrl:}
+                   <td><a class="intlink" href="settings">download settings</a></td>
+                   <td><form id="uploadbanner" enctype="multipart/form-data" method="post" action="setSettings">
+                            <input id="fileupload" name="myfile" type="file" />
+                            <span title="upload settings" class="clicker clicker0" onclick="appUpload('fileupload')" >upload</span>
+                    </form></td>
+               </tr>
+           </table>
+       </div>
+       <div>
+           <div class="aftertabby">
+               <div id="livedivoff" ><img src="nocam.png" width="640" height="480" title="click here for live view" onclick="livestreamstart('imgel')"/></div>
+               <div id="livedivon" style="display:none" >
+                   <div id="livestream">nothing to see here.</div>
+                   <div class="eventable">
+                       <div class="evencell">A</div>
+                       <div class="evencell">B</div>
+                       <div class="evencell" onclick="livestreamstop('imgel')" title="click to stop live view" >&#x2718</div>
+                   </div>
+               </div>
+           </div>
+           <div class="tabwrap">
+               <div class="tabby">
+              {settings:}
+               </div>
+           </div>
+       </div>
+   </body>
+</html>'
