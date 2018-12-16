@@ -67,7 +67,6 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
         pathchecked=self.breakdown('postpaths')
         if pathchecked[0]:
             pname, pathdef, pagetype,  targetob, ofunc, params = pathchecked[1:]
-
             th=self.headers['Content-Type']
             boundary = th.split("=")[1]
             bytesleft = int(self.headers['Content-length'])
@@ -223,7 +222,9 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                             dupd=json.dumps(self.server.getUpdatesSince(lasttime))
                             try:
                                 self.wfile.write(('data: %s\n\n' % dupd).encode('utf-8'))
+                                print('webserv sends updates', dupd)
                             except Exception as e:
+                                print('webserv sends updates FAILS', dupd)
                                 running=False
                                 if e.errno!=errno.EPIPE:
                                     self.server.stopDynUpdates()
@@ -237,6 +238,7 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                             try:
                                 self.wfile.write(('data: kwac\n\n').encode('utf-8'))
                             except Exception as e:
+                                print('webserv kwac for updates FAILS')
                                 running=False
                                 if e.errno!=errno.EPIPE:
                                     self.server.stopDynUpdates()
@@ -318,8 +320,16 @@ class ThreadedHTTPServer(ThreadingMixIn, http.server.HTTPServer):
         pass
 
     def addDynUpdate(self, id, value):
+        dropidx=None
+        for idx, ent in enumerate(self.dynupdates):
+            if id==ent[1][0]:
+                dropidx=idx
+                break
+        if not dropidx is None:
+            self.dynupdates.pop(dropidx)
+            print('dynupdates: previous {} dropped'.format(id))
         self.dynupdates.append((time.time(),(id,value)))
-#        print('var {} is updated to {}, count now {}'.format(id, value, len(self.dynupdates)))
+#        print('dynupdates: {} is updated to {}, count now {}'.format(id, value, len(self.dynupdates)))
         if len(self.dynupdates) > 50:
             self.dynupdates.pop(0)
 

@@ -37,7 +37,7 @@ class baseVar(ptree.treeob):
     shelp=None
     defaultFormat='{value:}'
 
-    def __init__(self, *, value, writers, readers, valueView, fallbackValue=None, onChange=None,
+    def __init__(self, *, value, writers, writersOn, readers, readersOn, valueView, fallbackValue=None, onChange=None,
                 formatString='{value:}',
                 label=None, shelp=None, loglvl=None, **kwargs):
         """
@@ -47,15 +47,17 @@ class baseVar(ptree.treeob):
 
         valueView       : the view in which the value is expressed.
 
-        writers         : a dict of the views which can be 'written'.  Any write / update attempt using a view which is not enabled
-                          will raise a RuntimeError. Each value is the name of a function (method) validates the new value and 
+        writers         : a dict of the views which can be 'written'and the function that validates the new value and 
                           converts it to the var's canonical form and returns the canonical value.
                           The function must take the parameters 'view' and 'value'.
 
-        readers         : a dict of the views which can be 'read'.  Any access attempt using a view which is not enabled will
-                          raise a RuntimeError. Each value is the name of a function (method) that returns the data as a
+        writersOn       : a list of the writers to actually allow in this var.
+
+        readers         : a dict of the views which can be 'read' and the function that returns the data as a
                           view appropriate object.
                           The function must have the parameter 'view'
+
+        readersOn       : a list of the readers to actually allow in this var.
                           
         onChange        : notification (function and view) called when the var's value changes, the function is a callable
                           with four named parameters:
@@ -87,10 +89,10 @@ class baseVar(ptree.treeob):
         self.__lvvalue=None               # this is the place we keep the canonical value of the variable - always access
                                           # via _getVar / _setVar
         super().__init__(**kwargs)
-        self.viewUpdate=self._fbuilder(writers)
+        self.viewUpdate=self._fbuilder(writers, writersOn)
         if len(self.viewUpdate)==0:
             raise RuntimeError('var type {} has no views for update!'.format(type(self).__name__))
-        self.viewGets=self._fbuilder(readers)
+        self.viewGets=self._fbuilder(readers, readersOn)
         if len(self.viewGets)==0:
             raise RuntimeError('var type {} has no views for reading!'.format(type(self).__name__))
         self.onChange={}                # setup empty notify set then set the value before adding notifications
@@ -157,19 +159,24 @@ class baseVar(ptree.treeob):
     def removeNotify(self, func, view):
         raise NotImplementedError()
 
-    def _fbuilder(self, fdict):
+    def _fbuilder(self, fdict, allowed):
         funcdict={}
-        for v,f in fdict.items():
-            assert v in self.app.allviews, 'view >{}< not found in list {}'.format(v, self.app.allviews)
-            if not callable(f):
-                cf=getattr(self,f)
-                if not callable(cf):
-                    raise TypeError('{} is not callable in var of type {} using {}'.format(f, type(self).__name__, v))
-                f=cf
-            sig = signature(f)
-            assert 'view' in sig.parameters, 'the function {}, given for view {} does not have "view" as a parameter'.format(
-                    f.__name__, v)
-            funcdict[v]=f
+        for v in allowed:
+            assert v in self.app.allviews, 'var {}, view >{}< not found in list {}'.format(self.name, v, self.app.allviews)
+            if v in fdict:
+                f=fdict[v]
+                if not callable(f):
+                    cf=getattr(self,f)
+                    if not callable(cf):
+                        raise TypeError('{} is not callable in var of type {} using {}'.format(f, type(self).__name__, v))
+                    f=cf
+                sig = signature(f)
+                assert 'view' in sig.parameters, 'the function {}, given for view {} does not have "view" as a parameter'.format(
+                        f.__name__, v)
+                funcdict[v]=f
+            else:
+                raise ValueError('var {} of type {} requested access view {} not found in view dict {}'.format(
+                        self.name, type(self).__name__, v, fdict))
         return funcdict                
 
     def setupLogMsg(self):
@@ -740,7 +747,7 @@ def extendViews(incoming, local):
     The incoming dict can be empty or even (for convenience) None.
     """
     if incoming is None or len(incoming) == 0:
-        return local
+        return local.copy()
     else:
         lcop=local.copy()
         lcop.update(incoming)

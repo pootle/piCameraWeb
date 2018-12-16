@@ -44,7 +44,6 @@ class picamAttrMixin():
 
         name        : If the name passed in is None then uses a class level default name for convenience.
         """
-#        print('picamAttrMixin constructor starts using', str(kwargs.keys()))
         self.camAttr=camAttr
         self.liveUpdate=liveUpdate
         obname=self.defaultName if name is None else name
@@ -57,7 +56,6 @@ class picamAttrMixin():
             for pname in sig.parameters.keys():
                 print(pname)
             raise
-#        print('picamAttrMixin constructor ends')
         
     def setValue(self, view, value):
         """
@@ -308,7 +306,7 @@ class streamResize(pforms.listVar):
     """
     defaultName='resize'
 
-    def __init__(self, app, parent, readers, writers, name=None, streamsizes=stdstreamsizes, **kwargs):
+    def __init__(self, app, parent, name=None, streamsizes=stdstreamsizes, **kwargs):
         """
         Parent is a multiCam object with camType already setup
         
@@ -316,10 +314,8 @@ class streamResize(pforms.listVar):
         """
         obname=self.defaultName if name is None else name
         appValues, default=streamsizes[app.camType]
-        vlists={v: ['{}x{}'.format(*s) for s in appValues] if v in ('html', 'pers') else appValues for v in app.allviews}
+        vlists={v: ['{}x{}'.format(*s) for s in appValues] if v in ('html', 'pers', 'user') else appValues for v in app.allviews}
         super().__init__(name=obname, parent=parent, fallbackValue=default, app=app,
-                readers=pforms.extendViews(readers, {'app':'_getValue', 'pers': '_getValue'}),
-                writers=pforms.extendViews(writers, {'app': '_validValue', 'pers': '_validValue'}),
                 label='stream resolution',
                 shelp='the stream is resized to this resolution',
                 vlists=vlists,

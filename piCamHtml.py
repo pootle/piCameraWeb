@@ -8,6 +8,8 @@ import logging
 import pforms
 import piCamFields as pcf
 
+
+
 class htmlgenBase():
     """
     mixin for pforms fields that makes html parts for the field.
@@ -27,18 +29,21 @@ class htmlgenBase():
     genShelp =          '{f.shelp:}'
                     # the short help
 
-    def __init__(self, **kwargs):
-#        print('htmlgenBase constructor starts')
-        super().__init__(**kwargs)
+    def __init__(self, readers, writers, **kwargs):
+        """
+        generic setup for html / web based client with other handy bits
+        """
+        assert 'html' in readers and 'app' in readers and 'pers' in readers and 'webv' in readers
+        assert 'app' in writers and 'pers' in writers and 'user' in writers
+        super().__init__(readers=readers, writers=writers, **kwargs)
         self.fhtmlid=self.getHierName()
-#        print('htmlgenBase constructor ends')
         
     def _getHtmlValue(self, view):
         """
         """
         return {
             'label': self.genLabel.format(f=self),
-            'cont' : self._getHtmlInputValue() if 'html' in self.viewUpdate else self._getHtmlOutputValue(),
+            'cont' : self._getHtmlInputValue() if 'user' in self.viewUpdate else self._getHtmlOutputValue(),
             'shelp': self.genShelp.format(f=self),
             }
 
@@ -58,8 +63,8 @@ class htmlgenOption(htmlgenBase):
 
     def __init__(self, readers=None, writers=None, **kwargs):
         super().__init__(
-                readers=pforms.extendViews(readers, {'html': '_getHtmlValue', 'expo': '_getValue'}),
-                writers=pforms.extendViews(writers, {'html': '_validValue'}),
+                readers=pforms.extendViews(readers, {'app': '_getValue', 'pers': '_getValue', 'html': '_getHtmlValue', 'webv': '_getValue'}),
+                writers=pforms.extendViews(writers, {'app': '_validValue', 'pers': '_validValue', 'user': '_validValue'}),
                 **kwargs
         )
 
@@ -75,18 +80,21 @@ class htmlgenOption(htmlgenBase):
         return mv
 
     def webUpdateValue(self, value):
-        if self.setValue('html', value[0]):
-            return {'resp':200, 'rdata': '{} updated to {}'.format(self.name, self.getValue('expo'))}
+        if self.setValue('user', value[0]):
+            return {'resp':200, 'rdata': '{} updated to {}'.format(self.name, str(self.getValue('app')))}
         else:
-            return {'resp':200, 'rdata': '{} unchanged at {}'.format(self.name, self.getValue('expo'))}
+            return {'resp':200, 'rdata': '{} unchanged at {}'.format(self.name, str(self.getValue('app')))}
 
 class htmlgenText(htmlgenBase):
     txtinputhtml = ('<input id="{f.fhtmlid:}" type="text" value="{sval:}" '
                    '''style="width: {f.clength:}em" onchange="appNotify(this, 'abcd')" />''')
-    def __init__(self, clength=6, **kwargs):
+    def __init__(self, readers=None , writers=None , clength=6, **kwargs):
         self.clength=clength
-        super().__init__(**kwargs)
-
+        super().__init__(
+                readers=pforms.extendViews(readers, {'app': '_getSValue', 'html': '_getHtmlValue', 'webv': '_getSValue', 'pers':'_getSValue'}),
+                writers=pforms.extendViews(writers, {'app': '_validStr', 'pers': '_validStr', 'user': '_validStr'}),
+                **kwargs)
+ 
     def _getHtmlInputValue(self):
         cval=self._getVar()
         mv=self.txtinputhtml.format(f=self, sval=cval)
@@ -98,10 +106,29 @@ class htmlgenText(htmlgenBase):
         return self._getVar()
 
     def webUpdateValue(self, value):
-        if self.setValue('app', value[0]):
-            return {'resp':200, 'rdata': '{} updated to {}'.format(self.name, self.getValue('expo'))}
+        if self.setValue('user', value[0]):
+            return {'resp':200, 'rdata': '{} updated to {}'.format(self.name, str(self.getValue('app')))}
         else:
-            return {'resp':200, 'rdata': '{} unchanged at {}'.format(self.name, self.getValue('expo'))}
+            return {'resp':200, 'rdata': '{} unchanged at {}'.format(self.name, str(self.getValue('app')))}
+
+class htmlgenPlainText(htmlgenBase):
+    """
+    a var which displays as a span only and is not editable
+    """
+    def __init__(self, readers=None , writers=None , clength=6, **kwargs):
+        self.clength=clength
+        super().__init__(
+                readers=pforms.extendViews(readers, {'app': '_getSValue', 'html': '_getHtmlValue', 'webv': '_getSValue', 'pers':'_getSValue'}),
+                writers=pforms.extendViews(writers, {'app': '_validStr', 'pers': '_validStr', 'user': '_validStr'}),
+                **kwargs)
+
+    def _getHtmlOutputValue(self):
+        return self.genFixedContent.format(f=self, sval=str(self._getVar()))
+
+    def _getSValue(self, view):
+        return self._getVar()
+
+    
 
 class htmlgenNumber(htmlgenBase):
     """
@@ -111,13 +138,13 @@ class htmlgenNumber(htmlgenBase):
                    '''min="{f.minv:}" max="{f.maxv:}" pattern="-?\d+" style="width: {f.clength:}em" onchange="appNotify(this, 'abcd')" />''')
                 # the valueu values defines the content of the value cell when the user can change it (although the
                 # user update can be separately disabled)
-    def __init__(self, clength=3, numstr='{}',
-            readers={'html': '_getHtmlValue', 'expo':'_getSValue'},
-            writers={'html': '_validNum',}, 
-            **kwargs):
+    def __init__(self, clength=3, numstr='{}', readers=None, writers=None, **kwargs):
         self.numstr=numstr
         self.clength=clength
-        super().__init__(readers=readers, writers=writers, **kwargs)
+        print('htmlgenNumber: {} using readers'.format(kwargs['name'] if 'name' in kwargs else self.defaultName), readers)
+        rx=pforms.extendViews(readers, {'app': '_getCValue', 'html': '_getHtmlValue', 'webv': '_getSValue', 'pers': '_getCValue'})
+        wx=pforms.extendViews(writers, {'app': '_validNum', 'user': '_validNum', 'pers': '_validNum'})
+        super().__init__(readers=rx, writers=wx, **kwargs)
  
     def _getHtmlInputValue(self):
         cval=self.numstr.format(self._getVar())
@@ -127,88 +154,101 @@ class htmlgenNumber(htmlgenBase):
         return mv
 
     def webUpdateValue(self, value):
-        if self.setValue('app', value[0]):
-            return {'resp':200, 'rdata': '{} updated to {}'.format(self.name, self.getValue('expo'))}
+        if self.setValue('user', value[0]):
+            return {'resp':200, 'rdata': '{} updated to {}'.format(self.name, str(self.getValue('app')))}
         else:
-            return {'resp':200, 'rdata': '{} unchanged at {}'.format(self.name, self.getValue('expo'))}
+            return {'resp':200, 'rdata': '{} unchanged at {}'.format(self.name, str(self.getValue('app')))}
 
 class htmlStreamSize(htmlgenOption, pcf.streamResize):
-    pass
+    def __init__(self, readersOn=('app', 'pers', 'html'), writersOn=('app', 'pers', 'user'), **kwargs):
+        super().__init__(readersOn=readersOn, writersOn=writersOn, **kwargs)
 
 class htmlTimestamp(htmlgenBase, pforms.timeVar):
     """
     timestamp fields to record the time something significant changed. This only supports app update and
     typically then updates the web browser on the fly.
     """
-    def __init__(self,
-            readers={'html': '_getHtmlValue', 'app': '_getCValue', 'expo':'_getSValue', 'webv': '_getSValue'},
-            writers={'app': '_validstamp'}, **kwargs):
-        super().__init__(readers=readers, writers=writers, **kwargs)
+    def __init__(self, readers=None, writers=None, readersOn=('app', 'html', 'webv'), writersOn=('app',), **kwargs):
+        super().__init__(
+                readers=pforms.extendViews(readers, {'html': '_getHtmlValue', 'app': '_getCValue', 'webv': '_getSValue', 'pers': '_getCValue'}),
+                readersOn=readersOn,
+                writers=pforms.extendViews(writers, {'app': '_validstamp', 'pers': '_validstamp', 'user': '_validstamp'}),
+                writersOn=writersOn,
+                **kwargs)
             
     def _getHtmlOutputValue(self):
         return self.genFixedContent.format(f=self, sval=self._getSValue('html'))
     
-class htmlStringnp(htmlgenText, pforms.textVar):
-    def __init__(self, readers= None, writers= None, **kwargs):
-        super().__init__(
-            readers=pforms.extendViews(readers, {'app': '_getSValue', 'html': '_getHtmlValue', 'expo':'_getSValue'}),
-            writers=pforms.extendViews(writers, {'app': '_validStr'}),
-            **kwargs)
+class htmlString(htmlgenText, pforms.textVar):
+    pass
 
-class htmlString(htmlStringnp):
-    def __init__(self, readers=None, writers=None, **kwargs):
-        super().__init__(
-            readers=pforms.extendViews(readers, {'pers':'_getSValue'}),
-            writers=pforms.extendViews(writers, {'pers': '_validStr'}), 
-            **kwargs)
+HTMLSTATUSSTRING={
+    'name': 'status', 'fallbackValue': 'off',
+    'onChange'  : ('dynamicUpdate','app'),
+    'label'     : 'state',
+    'shelp'     : 'current status of this activity',
+    'readersOn' : ('html', 'webv'),
+    'writersOn' : ('app',)}
+
+class htmlPlainString(htmlgenPlainText, pforms.textVar):
+    pass
 
 class htmlFloat(htmlgenNumber, pforms.numVar):
     """
-    float with persistance
+    generic html float
     """
-    def __init__(self,
-            readers = {'app': '_getCValue', 'html': '_getHtmlValue', 'expo':'_getSValue', 'pers':'_getCValue'},
-            writers = {'app': '_validNum', 'html': '_validNum', 'pers': '_validNum'}, **kwargs):
-        super().__init__(
-                readers=readers, writers=writers, **kwargs)
-
-class htmlFloatnp(htmlgenNumber, pforms.numVar):
-    """
-    float without persistence
-    """
-    def __init__(self,
-            readers = {'app': '_getCValue', 'html': '_getHtmlValue', 'expo':'_getSValue'},
-            writers = {'app': '_validNum', 'html': '_validNum'}, **kwargs):
-        super().__init__(
-                readers=readers, writers=writers, **kwargs)
+    pass
 
 class htmlInt(htmlgenNumber, pforms.intervalVar):
-    def __init__(self,
-            readers = {'html': '_getHtmlValue', 'expo':'_getSValue', 'pers': '_getCValue'},
-            writers = {'html': '_validNum', 'app': '_validNum', 'pers': '_validNum'}, **kwargs):
-        super().__init__(readers=readers, writers=writers, **kwargs)
-
-class htmlIntnp(htmlgenNumber, pforms.intervalVar):
-    def __init__(self,
-            readers = {'html': '_getHtmlValue', 'expo':'_getSValue'},
-            writers = {'html': '_validNum', 'app': '_validNum'}, **kwargs):
-        super().__init__(readers=readers, writers=writers, **kwargs)
+    pass
 
 class htmlCyclicButton(htmlgenBase, pforms.listVar):
     def __init__(self, alist, app,
-            readers={'html': '_getHtmlValue', 'app':'_getValue', 'expo': '_getValue'},
-            writers={'html': '_validValue', 'app': '_validValue'},
+            readers={'html': '_getHtmlValue', 'app':'_getValue', 'pers': '_getValue', 'webv': '_getValue'},
+            readersOn=('app', 'html', 'webv'),
+            writers={'user': '_validValue', 'app': '_validValue', 'pers': '_validValue'},
+            writersOn=('app', 'user'),
             **kwargs):
-        super().__init__(readers=readers, writers=writers, app=app,
+        super().__init__(readers=readers, readersOn=readersOn, writers=writers, writersOn=writersOn, app=app,
                 vlists={v: alist for v in app.allviews}, **kwargs)
 
     def webUpdateValue(self, value):
-        self._increment('html', value)
-        return {'resp':200, 'rdata': '{} updated to {}'.format(self.name, self.getValue('expo'))}
+        self._increment('user', value)
+        return {'resp':200, 'rdata': '{} updated to {}'.format(self.name, str(self.getValue('app')))}
 
     def _getHtmlInputValue(self):
         mv = '''<span id="{f.fhtmlid:}" title="{f.shelp}" class="clicker clicker0" onclick="appNotify(this, 'abcd')" >{sval:}</span>'''.format(
-                sval=self.getValue('expo'), f=self)       
+                sval=self.getValue('webv'), f=self)       
         if self.loglvl <= logging.DEBUG:
             self.log.debug('_getHtmlInputValue returns %s' % mv)
         return mv
+
+class htmlFolder(htmlgenBase, pforms.folderVar):
+    tophtml='<h3>{topname}</h3><ul>{dlist}{flist}</ul>\n'
+    folderitemhtml="<li><span>{0[path].name:14s} ({0[count]:3})</span></li>\n"
+    fileitemhtml="<li><span>{0[path].name:14s} ({0[size]:3.2f}MB)</span></li>\n"
+
+    def __init__(self, readers=None, writers=None, **kwargs):
+        super().__init__(
+                readers=pforms.extendViews(readers, {'html': '_getHtmlValue', 'app': '_getAppValue', 'webv': '_getStrValue', 'pers': '_getStrValue'}),
+                writers=pforms.extendViews(writers, {'user': '_validValue', 'app': '_validValue', 'pers': '_validValue'}),
+                **kwargs)
+        
+    def _getHtmlInputValue(self):
+#        print('trees')
+        dets=self._getDictValue(None)
+#        print(dets)
+        topname=list(dets.keys())[0]
+        entries=sorted([v for v in dets[topname]['inner'].values() if v['type'] is None], key=lambda x: x['path'].name)
+        dlist='\n'.join([self.folderitemhtml.format(e) for e in entries])
+        entries=sorted([v for v in dets[topname]['inner'].values() if not v['type'] is None], key=lambda x: x['path'].name)
+        flist='\n'.join([self.fileitemhtml.format(e) for e in entries])
+        return self.tophtml.format(topname=topname, dlist=dlist, flist=flist)
+        
+    def _setVar(self, val):
+        if val is None:
+            x=17/0
+        else:
+            print('setting value', val)
+            super()._setVar(val)
+

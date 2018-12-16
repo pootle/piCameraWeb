@@ -3,8 +3,11 @@
 Module to provide cpu based movement detection, within a piCamHandler environment
 """
 
+import logging
+import numpy, queue, time
+
 import papps
-import piCamHtml as pch
+import piCamHtml as pchtml
 import piCamFields as pcf
 
 class changedImage():
@@ -68,9 +71,10 @@ class ciActivity(papps.appThreadAct):
             if not img is None:
                 detect=self.engine.check(img)
                 if detect:
-                    self.vars['triggercount'].setValue('app',self.vars['triggercount'].getValue('app'))
+                    self.vars['triggercount'].setValue('app',self.vars['triggercount'].getValue('app')+1)
                     self.vars['lasttrigger'].setValue('app',time.time())
-                    print('it moved, hitcount {} from {}'.format(self.engine.hitcount, type(self.engine.hits).__name__))
+                    if self.loglvl <= logging.DEBUG:
+                        logging.debug('it moved, hitcount {} from {}'.format(self.engine.hitcount, type(self.engine.hits).__name__))
                 self.outQ.put(img)
         self.endDeclare()
 
@@ -137,10 +141,7 @@ class mover(papps.appThreadAct):
         try:
             self.currentBuff=self.numpyBuffs.pop()
         except IndexError:
-            print('Oh gawd, ran out of buffers')
-            raise StopIteration
-        if self.procCount % 25==0:
-            print('done',self.procCount)
+            raise RuntimeError('Oh gawd, ran out of buffers')
         return self.currentBuff
 
 
@@ -149,52 +150,57 @@ class mover(papps.appThreadAct):
 ############################################################################################
 
 cpumovetable=(
-    (pch.htmlStringnp, {'name': 'status', 'fallbackValue': 'off',
-            'onChange': ('dynamicUpdate','app'),
-            'label'   : 'state',
-            'shelp'   : 'current status of this activity',
-            'readers' : {'html': '_getHtmlValue', 'expo':'_getSValue', 'webv': '_getSValue'}}),
-    (pch.htmlStreamSize, {'streamsizes': pcf.minisizes}),
-    (pch.htmlInt,        {
-            'name' : 'startskip', 'minv':0, 'maxv':100, 'clength':4, 'fallbackValue': 1,
-            'label': 'skip on start',
-            'shelp': 'on startup, number of frames to skip before detection starts'}),
-    (pch.htmlInt,        {
+    (pchtml.htmlString,  pchtml.HTMLSTATUSSTRING),
+    (pchtml.htmlStreamSize, {'streamsizes': pcf.minisizes}),
+    (pchtml.htmlInt,        {
+            'readersOn': ('app', 'pers', 'html'),
+            'writersOn': ('app', 'pers', 'user'),
+            'name'     : 'startskip', 'minv':0, 'maxv':100, 'clength':4, 'fallbackValue': 1,
+            'label'    : 'skip on start',
+            'shelp'    : 'on startup, number of frames to skip before detection starts'}),
+    (pchtml.htmlInt,        {
+            'readersOn': ('app', 'pers', 'html'),
+            'writersOn': ('app', 'pers', 'user'),
             'name' : 'framediv', 'minv':1, 'maxv':10, 'clength':4, 'fallbackValue':1,
             'label': 'frame ratio',
             'shelp': 'process only every nth frame (1-> every frame, 3 -> every third frame)'}),
-    (pch.htmlInt,        {
+    (pchtml.htmlInt,        {
+            'readersOn': ('app', 'pers', 'html'),
+            'writersOn': ('app', 'pers', 'user'),
             'name' : 'cellthreshold', 'minv':1, 'maxv': 200, 'clength':4, 'fallbackValue':10,
             'label': 'cell threshold',
             'shelp': 'minimum difference for a cell to trigger'}),
-    (pch.htmlInt,        {'name' : 'cellcount', 'minv':1, 'maxv': 5000, 'clength':4, 'fallbackValue':100,
-                      'label': 'cell count',
-                      'shelp': 'minimum number of cells over trigger level to cause movement trigger'}),
-    (pch.htmlCyclicButton, {
+    (pchtml.htmlInt,        {'name' : 'cellcount', 'minv':1, 'maxv': 5000, 'clength':4, 'fallbackValue':100,
+            'readersOn': ('app', 'pers', 'html'),
+            'writersOn': ('app', 'pers', 'user'),
+            'label': 'cell count',
+            'shelp': 'minimum number of cells over trigger level to cause movement trigger'}),
+    (pchtml.htmlCyclicButton, {
             'name' : 'run',  'fallbackValue': 'start now', 'alist': ('start now', 'stop now '),
+            'onChange'  : ('dynamicUpdate','user'),
             'label': 'enable detection', 
             'shelp': 'enables / disables this motion detection method',
     }),
-    (pch.htmlInt,        {
-            'name' : 'triggercount', 'fallbackValue': 0,
-            'readers' : {'html': '_getHtmlValue', 'app': '_getCValue', 'expo':'_getSValue', 'webv': '_getSValue'},
-            'writers' : {'app': '_validNum'},
-            'onChange': ('dynamicUpdate','app'),
-            'label': 'recordings',
-            'shelp': 'number of recorded videos this session'}),
-    (pch.htmlTimestamp, {'name': 'lasttrigger', 'fallbackValue':0,
+    (pchtml.htmlInt,        { 'loglvl': logging.DEBUG,
+            'name'      : 'triggercount', 'fallbackValue': 0,
+            'readersOn' : ('html', 'app', 'webv'),
+            'writersOn' : ('app',),
+            'onChange'  : ('dynamicUpdate','app'),
+            'label'     : 'triggers',
+            'shelp'     : 'number of triggers this session'}),
+    (pchtml.htmlTimestamp, {'name': 'lasttrigger', 'fallbackValue':0,
             'strft': '%H:%M:%S' , 'unset':'never',
             'onChange': ('dynamicUpdate','app'),
-            'label': 'time of last recording',
-            'shelp': 'time last video recording triggered'}),
-    (pch.htmlTimestamp, {'name': 'started', 'fallbackValue':0,
+            'label': 'last trigger time',
+            'shelp': 'time last triggered occurred'}),
+    (pchtml.htmlTimestamp, {'name': 'started', 'fallbackValue':0,
             'strft': '%H:%M:%S' , 'unset':'never',
             'onChange': ('dynamicUpdate','app'),
             'label': 'started at',
-            'shelp': 'last time this view was started'}),
-    (pch.htmlTimestamp, {'name': 'stopped', 'fallbackValue':0,
+            'shelp': 'time this activity last started'}),
+    (pchtml.htmlTimestamp, {'name': 'stopped', 'fallbackValue':0,
             'strft': '%H:%M:%S' , 'unset':'never',
             'onChange': ('dynamicUpdate','app'),
             'label': 'stopped at',
-            'shelp': 'last time this view stopped'}),
+            'shelp': 'time this activity last stopped'}),
 )
