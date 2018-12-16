@@ -26,9 +26,10 @@ These notes exaplin how to get this running on a clean build of Raspbian Lite.
 ### after a clean build of raspbian (any version including lite)
 
 > sudo apt-get install python3-pigpio git python3-pip gpac
+
 > sudo apt-get install python3-numpy
+
 > sudo pip3 install picamera
-> stuff
 ### Then (only if using gpio triggered motion detection - e.g. a PIR motion detector):
 Arrange for the pigpio daemon to start automatically - I use:
 > sudo crontab -e
