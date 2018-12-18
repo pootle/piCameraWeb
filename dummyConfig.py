@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+import logging
+
 serverdef={
     'port':8000,            # this is the port the webserver will respond to
     'sfxlookup':{
@@ -35,6 +37,6 @@ serverdef={
         },
     'obdefs'   : {
         'pistat'        : {'ondemand': {'className': 'utils.systeminfo', 'fields': ('busy', 'cputemp')}},
-        'pootlecam'     : {'setup'   : {'className': 'piCamWeb.testcam2', 'webserver': None}},
+        'pootlecam'     : {'setup'   : {'className': 'piCamWeb.testcam2', 'webserver': None, 'loglvl':logging.DEBUG}},
         },
 }

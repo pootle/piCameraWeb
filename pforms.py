@@ -607,6 +607,9 @@ class groupVar(baseVar):
         else:              # there's another level to go
             return target.webUpdate(splitn[1], value)
 
+    def __repr__(self):
+        return "{} is a {}".format(self.name, type(self).__name__)
+
 class appVar(groupVar):
     """
     The top level group in a tree - has no parent.
@@ -696,7 +699,7 @@ class folderVar(baseVar):
             v=None
         if v is None:
             v=pathlib.Path(fallbackValue).expanduser()
-        if v.exists:
+        if v.exists():
             if not v.is_dir():
                 raise ValueError('path {} is not a folder'.format(str(v)))
         else:

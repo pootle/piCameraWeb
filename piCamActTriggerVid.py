@@ -31,6 +31,10 @@ class triggeredVideo(papps.appThreadAct):
     def endedlogmsg(self):
         return 'triggeredVideo ends, {} video files recorded'.format(str(self.vars['triggercount'].getValue('app')))
 
+    def tidyclose(self):
+        self.parent.releaseSplitterPort(self)
+        super().tidyclose()
+
     def trigger(self):
         self.lasttrigger=time.time()
 
@@ -39,7 +43,7 @@ class triggeredVideo(papps.appThreadAct):
         picam=self.parent.picam
         rs=self.vars['resize'].getValue('app')
         circstream=picamera.PiCameraCircularIO(picam, seconds=self.vars['backtime'].getValue('app')+1, splitter_port=self.sPort)
-        picam.start_recording(circstream, resize=rs, splitter_port=self.sPort, format='h264')#, sps_timing=True)
+        picam.start_recording(circstream, resize=rs, splitter_port=self.sPort, format='h264', sps_timing=True)
         if self.loglvl <=logging.INFO:
             self.log.info("start_recording with size {}".format(str(rs)))            
         while self.requstate != 'stop':
@@ -76,7 +80,8 @@ class triggeredVideo(papps.appThreadAct):
                 subp=Popen(cmd, universal_newlines=True, stdout=PIPE, stderr=PIPE)
                 outs, errs = subp.communicate(timeout=15)
                 rcode=subp.returncode
-                if rcode ==0:
+                if False:
+#                if rcode ==0:
                     shutil.copystat(str(bfile), str(tfile))
                     afile.unlink()
                     bfile.unlink()                    
@@ -93,7 +98,7 @@ class triggeredVideo(papps.appThreadAct):
 ############################################################################################
 
 tripvidtable=(
-    (pchtml.htmlString  , pchtml.HTMLSTATUSSTRING),
+    (pchtml.htmlStatus  , pchtml.HTMLSTATUSSTRING),
     (pchtml.htmlStreamSize, {}),
     (pchtml.htmlFloat, {
             'readersOn': ('app', 'pers', 'html'),

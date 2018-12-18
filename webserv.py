@@ -1,10 +1,21 @@
 #!/usr/bin/python3
 
-import os, sys, time, argparse, pathlib, importlib, socket, errno, json, logging
+import os, sys, time, argparse, pathlib, importlib, socket, errno, json, logging, traceback, threading
 from urllib.parse import urlparse, parse_qs
 import http.server
 from socketserver import ThreadingMixIn
 import utils
+
+def logException(log, text1, excInfo):
+    if not log is None:
+        exc_type, exc_value, exc_traceback=excInfo
+        log.critical('exception {} in {}\n    value: {}\n{}'.format(str(exc_type), text1, str(exc_value), '\n'.join(traceback.format_tb(exc_traceback))))
+
+    
+#     exc_type, exc_value, exc_traceback = sys.exc_info()
+#        print( {'fail': 'exception', 'type':str(exc_type), 'value':str(exc_value)
+#                , 'trace':(''.join(traceback.format_tb(exc_traceback)) )
+#                , 'fromlink':0})
 
 appobpages=('appPage', 'vidstream', 'genstream', 'datafunc','download', 'upload')
         # pathdef pagetypes that refer to an object to be used
@@ -33,7 +44,6 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                             obdef=serverconf['obdefs'][obid]['ondemand']
                             params = {k:v if len(v)>1 else v[0] for k, v in  params.items()}
                             params.update(obdef)
-                            print(params)
                             targetob=utils.makeClassInstance(**params)
                             self.server.mypyobjects[obid]=targetob
                         else:
@@ -112,8 +122,8 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                 try:
                     result = ofunc(**params)
                 except:
-                    print('exception when calling', ofunc)
-                    raise
+                    logException(self.server.log, 'failed handling {}'.format(pname), sys.exc_info())
+                    self.send_error(500,'do get datafunc call crashed')
                 # result is a dict with:
                 #   resp: the response code - if 200 then good else bad
                 #   rdata: (only if resp==200) data (typically a dict) to json encode and return as the data
@@ -137,7 +147,8 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                     cont=sfile.read()
                     self.wfile.write(cont)
                 if 'log' in pathdef:
-                    print('pywebhandler.do_GET file {} length {} sent in response to {} using headers {} using.'.format(
+                    if self.server.loglvl <= logging.DEBUG:
+                        self.server.log.debug('pywebhandler.do_GET file {} length {} sent in response to {} using headers {} using.'.format(
                             str(staticfilename), len(cont), pname, str(serverconf['sfxlookup'][sfx]), pathdef) )
 
             elif 'appPage'==pagetype:
@@ -148,13 +159,12 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                     self.end_headers()
                     self.wfile.write(cont.encode())
                     if 'log' in pathdef:
-                        print('pywebhandler.do_GET appPage called {} length {} sent in response to {} using headers {} using.'.format(
-                            pathdef['func'], len(cont), pname, str(serverconf['sfxlookup'][psuffix]), pathdef) )
-
+                        if self.server.loglvl <= logging.DEBUG:
+                            self.server.log.debug('pywebhandler.do_GET appPage called {} length {} sent in response to {} using headers {} using.'.format(
+                                pathdef['func'], len(cont), pname, str(serverconf['sfxlookup'][psuffix]), pathdef) )
                 except:
-                    print('exception when calling', ofunc)
-                    raise
-
+                    logException(self.server.log, 'failed handling {}'.format(pname), sys.exc_info())
+                    self.send_error(500,'do get datafunc call crashed')
             elif 'vidstream'==pagetype:
                 output=targetob.startLiveStream()
                 self.send_response(200)
@@ -174,20 +184,22 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                         self.end_headers()
                         self.wfile.write(frame)
                         self.wfile.write(b'\r\n')
+                except BrokenPipeError:
+                    pass
                 except Exception as e:
-                    print(
-                        'Removed streaming client %s: %s',
-                        self.client_address, str(e))
+                    logException(self.server.log, 'Removed streaming client %s: %s' % (self.client_address, str(e)), sys.exc_info())
                 targetob.stopLiveStream()
 
             elif 'genstream'==pagetype:
                 if 'func' in pathdef:
                     ofunc=getattr(targetob, pathdef['func'])
                     if not callable(ofunc):
-                        print("the attribute %s in object %s (of type (%s) is not callable" % (pathdef['datafunc'], str(targetob), type(targetob).__name__))
+                        if not self.server.log is None:
+                            self.server.log.critical("the attribute %s in object %s (of type (%s) is not callable" % (
+                                    pathdef['datafunc'], str(targetob), type(targetob).__name__))
                         self.send_error(500,'page {} does not reference a callable'.format(pname))
-                        return
-                    sequob=ofunc()
+                    else:
+                        sequob=ofunc()
                 else:
                     sequob=targetob
                 tickinterval=pathdef['period']
@@ -247,6 +259,7 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                                     print(type(e).__name__)
                                     print(e)
                                     print('dynamic updates finished')
+                                    return
                     self.server.stopDynUpdates()            
                 else:
                     self.send_error(405,'no dynamic update stream')
@@ -258,7 +271,8 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(resp.encode('utf-8'))
             else:
-                print('pywebhandler.do_GET unsupported pagetype in path definition:', pathdef)
+                if not self.server.log is None:
+                    self.server.log.critical('pywebhandler.do_GET unsupported pagetype in path definition:', pathdef)
                 self.send_error(500,'something went a bit wrong!')
         else:
             self.send_error(pathchecked[1],pathchecked[2])
@@ -272,8 +286,10 @@ class ThreadedHTTPServer(ThreadingMixIn, http.server.HTTPServer):
     
     Also it allows queues of status messages to be setup which are served up as event streams on request. No session control etc. here though
     """
-    def __init__(self, *args,  mypyconf, **kwargs):
+    def __init__(self, *args,  loglvl=logging.INFO, mypyconf, **kwargs):
         super().__init__(*args, **kwargs)
+        self.log=None if loglvl is None else logging.getLogger(__loader__.name+'.'+type(self).__name__)
+        self.loglvl=1000 if loglvl is None else loglvl
         self.mypyconf=mypyconf
         self.mypyobjects={}
         self.dynupdates=[]
@@ -290,10 +306,13 @@ class ThreadedHTTPServer(ThreadingMixIn, http.server.HTTPServer):
                 else:
                     assert 'ondemand' in odef
                     descs.append('%s will be setup on demand' % oname)
-            print('added objects', ', '.join(descs))
+            smsg='added objects', ', '.join(descs)
         else:
-            print('no associated objects created')
+            smsg='no associated objects created'
+        if self.loglvl <= logging.INFO:
+            self.log.info(smsg)
         self.validateConfig()           # does some setup as well
+        
 
     def requestDynUpdates(self):
         """
@@ -327,9 +346,9 @@ class ThreadedHTTPServer(ThreadingMixIn, http.server.HTTPServer):
                 break
         if not dropidx is None:
             self.dynupdates.pop(dropidx)
-            print('dynupdates: previous {} dropped'.format(id))
+            if self.loglvl <= logging.DEBUG:
+                self.log.debug('dynupdates: previous {} dropped'.format(id))
         self.dynupdates.append((time.time(),(id,value)))
-#        print('dynupdates: {} is updated to {}, count now {}'.format(id, value, len(self.dynupdates)))
         if len(self.dynupdates) > 50:
             self.dynupdates.pop(0)
 
@@ -406,23 +425,35 @@ if __name__ == '__main__':
     clparse = argparse.ArgumentParser(description='runs a simple python webserver.')
     clparse.add_argument('-c', '--config', help='path to configuration file.')
     clparse.add_argument('-l', '--logfile', help='if present sets logging to log to this file')
+    clparse.add_argument('-v', '--consolelog', default=1000, type=int, help='level of logging for the console log (stderr), if absent there is no console log')
+    clparse.add_argument('-i', '--interactive', action='store_true', help='run webserver in separate thread to allow interaction with python interpreter while running')
     args=clparse.parse_args()
-    zlogargs={
-        'level'   : logging.DEBUG,
-        'format'  : '%(asctime)s %(levelname)7s (%(process)d)%(threadName)12s  %(module)s.%(funcName)s: %(message)s',
+    zlogfmtargs={
+        'fmt'     : '%(asctime)s %(levelname)7s (%(process)d)%(threadName)12s  %(module)s.%(funcName)s: %(message)s',
         'datefmt' : "%H:%M:%S",
     }
+    # setup primary log
+    toplog=logging.getLogger()
+    toplog.setLevel(logging.DEBUG)
+    zform=logging.Formatter(**zlogfmtargs)
+    # if appropriate, add a handler to write to console
+    if args.consolelog<1000:
+        h=logging.StreamHandler()
+        h.setFormatter(zform)
+        toplog.addHandler(h) # do I need zlogargs again?
+    # check for and add log to file if necessary
     if not args.logfile is None:
         logp=pathlib.Path(args.logfile).expanduser()
-        zlogargs['filename'] = str(logp)
-    logging.basicConfig(**zlogargs)
+        h=logging.FileHandler(str(logp))
+        h.setFormatter(zform)
+        toplog.addHandler(h)
     if args.config is None:
-        logging.critical('No configuration file given - exiting')
+        toplog.critical('No configuration file given - exiting')
         sys.exit('no configuration file given.')
     configpath=pathlib.Path(args.config)
     if not configpath.with_suffix('.py').is_file():
         exm='cannot find configuration file ' + str(configpath.with_suffix('.py'))
-        logging.critical(exm)
+        toplog.critical(exm)
         sys.exit(exm)
     incwd=str(configpath.parent) == '.'
     if not incwd:
@@ -431,7 +462,7 @@ if __name__ == '__main__':
         configmod=importlib.import_module(configpath.stem)
     except:
         exm='failed to load server config file', str(configpath)
-        logging.critical(exm)
+        toplog.critical(exm)
         sys.exit(exm)
     serverconf=configmod.serverdef
     ips=utils.findMyIp(10)
@@ -441,15 +472,22 @@ if __name__ == '__main__':
         smsg='Starting webserver on %s:%d' % (ips[0], serverconf['port'])
     else:
         smsg='Starting webserver on multiple ip addresses (%s), port:%d' % (str(ips), server['port'])
-    logging.info(smsg)
+    print(smsg)
+    toplog.info(smsg)
     server = ThreadedHTTPServer(('',serverconf['port']),pywebhandler, mypyconf=serverconf)
-    try:
-        server.serve_forever()
-        smsg='webserver closed'
-    except KeyboardInterrupt:
-        smsg='webserver got KeyboardInterrupt'
-    except Exception as e:
-        smsg='webserver exception '+ type(e).__name__+' with '+e.msg
-    finally:
-        server.close()
-    logging.info(smsg)
+    if 'interactive' in args:
+        print('interactive mode')
+        sthread=threading.Thread(target=server.serve_forever)
+        sthread.start()
+    else:
+        print('normal mode')
+        try:
+            server.serve_forever()
+            smsg='webserver closed'
+        except KeyboardInterrupt:
+            smsg='webserver got KeyboardInterrupt'
+        except Exception as e:
+            smsg='webserver exception '+ type(e).__name__+' with '+e.msg
+        finally:
+            server.close()
+        toplog.info(smsg)

@@ -123,17 +123,23 @@ class cameraManager(papps.appManager):
             return None
         if self.picam is None:
             self.startCamera()
+        if self.loglvl <= logging.DEBUG:
+            self.log.debug('allocated port {}'.format(useport))
         return useport
 
     def setSplitterPort(self, port, activity):
         if self.camStreams[port] is 0:
             self.camStreams[port]=activity
+            if self.loglvl <= logging.DEBUG:
+                self.log.debug('sets port {} used by {}'.format(port,activity.name))
         else:
             raise RuntimeError('splitter port setup error')
 
     def releaseSplitterPort(self, activity):
         if self.camStreams[activity.sPort]==activity:
             self.camStreams[activity.sPort]=None
+            if self.loglvl <= logging.DEBUG:
+                self.log.debug('releases port {} - previously used by {}'.format(activity.sPort, activity.name))
         else:
             raise RuntimeError('release splitter port inconsistent info for activity {}'.format(activity.name))
 

@@ -78,11 +78,11 @@ class externalmover(papps.appThreadAct):
 ############################################################################################
 
 extmovetable=(
-    (pchtml.htmlString, pchtml.HTMLSTATUSSTRING),
+    (pchtml.htmlStatus  , pchtml.HTMLSTATUSSTRING),
     (pchtml.htmlInt,        {
             'name'      : 'triggerpin', 'minv':1, 'maxv':63, 'clength':2, 'fallbackValue': 1,'loglvl': logging.DEBUG,
-            'readersOn' : ('html', 'app', 'webv'),
-            'writersOn' : ('app', 'user'),            
+            'readersOn' : ('html', 'app', 'pers'),
+            'writersOn' : ('app', 'pers', 'user'),            
             'label'     : 'gpio pin',
             'shelp'     : 'broadcom pin number for external sensor'}),
     (pchtml.htmlCyclicButton, {

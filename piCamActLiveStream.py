@@ -48,7 +48,7 @@ class StreamingOutput():
 ############################################################################################
 
 livestreamtable=(
-    (pchtml.htmlString, pchtml.HTMLSTATUSSTRING),
+    (pchtml.htmlStatus  , pchtml.HTMLSTATUSSTRING),
     (pchtml.htmlStreamSize,{}),
     (pchtml.htmlTimestamp, {'name': 'started', 'fallbackValue':0,
             'strft': '%H:%M:%S' , 'unset':'never',

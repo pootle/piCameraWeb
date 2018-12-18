@@ -114,6 +114,8 @@ class appThreadAct(appActivity):
             self.log.info(self.endedlogmsg())
 
     def requestFinish(self):
+        if self.loglvl <= logging.INFO:
+            self.log.info('activity {} requeststate now stop'.format(self.name))
         self.requstate='stop'
 
     def tidyclose(self):

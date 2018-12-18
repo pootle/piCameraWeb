@@ -113,7 +113,6 @@ class camResolution(picamAttrMixin, pforms.listVar):
         
         If the value parameter is not valid for the current camera it silently resets to a sensible value
         """
-        print('camResolution constructor starts using', str(kwargs.keys()))
         appValues, default=self.resolutions[app.camType]
         super().__init__(parent=parent, fallbackValue=default, app=app,
                 readers=pforms.extendViews(readers, {'app':'_getValue', 'pers': '_getValue'}),
@@ -123,7 +122,6 @@ class camResolution(picamAttrMixin, pforms.listVar):
                 shelp='camera resolution with standard values that try to use the full frame',
                 vlists={v: appValues for v in app.allviews},
                 **kwargs)
-        print('camResolution constructor ends')
 
     def _validAppValue(self, view, value):
         """
@@ -295,8 +293,8 @@ minisizes={ # table used for cpu based motion analysis with added smaller sizes
     'ov5647' : (((1640,1232), (1230,924), (1200,900), (820,616), (800,600), (640,480), (410,308), (640,480), (320, 240), 
                         (280, 210), (200, 150), (128, 96)),
                 (200,150)),
-    'imx219' : (((1296,972), (972,729), (864,648), (800,600), (648,486), (640,480), (432,324), (324,243), (320, 240), 
-                        (280, 210), (200, 150), (128, 96)),
+    'imx219' : (((1296,972), (972,729), (864,648), (800,600), (648,486), (640,480), (432,324), (320, 240), 
+                        (280, 210), (200, 150), (128, 96), (64, 48)),
                 (200,150))
 }
 

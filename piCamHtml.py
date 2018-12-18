@@ -141,7 +141,6 @@ class htmlgenNumber(htmlgenBase):
     def __init__(self, clength=3, numstr='{}', readers=None, writers=None, **kwargs):
         self.numstr=numstr
         self.clength=clength
-        print('htmlgenNumber: {} using readers'.format(kwargs['name'] if 'name' in kwargs else self.defaultName), readers)
         rx=pforms.extendViews(readers, {'app': '_getCValue', 'html': '_getHtmlValue', 'webv': '_getSValue', 'pers': '_getCValue'})
         wx=pforms.extendViews(writers, {'app': '_validNum', 'user': '_validNum', 'pers': '_validNum'})
         super().__init__(readers=rx, writers=wx, **kwargs)
@@ -181,6 +180,9 @@ class htmlTimestamp(htmlgenBase, pforms.timeVar):
     
 class htmlString(htmlgenText, pforms.textVar):
     pass
+
+class htmlStatus(htmlString):
+    genFixedContent =   '<span id="{f.fhtmlid:}" style="font-size:160%; font-weight: bold;" >{sval:}</span>'
 
 HTMLSTATUSSTRING={
     'name': 'status', 'fallbackValue': 'off',
@@ -249,6 +251,6 @@ class htmlFolder(htmlgenBase, pforms.folderVar):
         if val is None:
             x=17/0
         else:
-            print('setting value', val)
+#            print('setting value', val)
             super()._setVar(val)
 

@@ -15,7 +15,7 @@ from piCamActLiveStream import livestreamtable
 from piCamActTriggerVid import tripvidtable
 
 class piCamWeb(pch.cameraManager):
-    def __init__(self, webserver, **kwargs):
+    def __init__(self, webserver, loglvl=logging.INFO, **kwargs):
         """
         this runs up the web specific stuff for the camera and all associated functionality.
         
@@ -34,7 +34,7 @@ class piCamWeb(pch.cameraManager):
             readersOn=('pers',),
             writers={'app':'_setValueDict', 'pers': '_setValueDict'},
             writersOn=('pers',),
-            loglvl=logging.DEBUG,
+            loglvl=loglvl,
             **kwargs)
 
     def topPage(self):
@@ -161,7 +161,7 @@ class htmlCamExpoComp(pchtml.htmlgenOption, pcf.camExpoComp):
 camsettingstable=(
     (htmlCamResolution, {}),
     (htmlCamFramerate, {}),
-    (htmlCamRotation, {}),
+    (htmlCamRotation, {'loglvl':logging.DEBUG-1}),
     (htmlCamBrightness, {}),
     (htmlCamContrast, {}),
     (htmlCamAwb_mode, {}),

@@ -95,6 +95,10 @@ class mover(papps.appThreadAct):
         self.sPort=splitterport
         super().__init__(**kwargs)
 
+    def tidyclose(self):
+        self.parent.releaseSplitterPort(self)
+        super().tidyclose()
+
     def run(self):
         imgsize=self.vars['resize'].getValue('app')
         self.checkQueue=queue.Queue()
@@ -150,7 +154,7 @@ class mover(papps.appThreadAct):
 ############################################################################################
 
 cpumovetable=(
-    (pchtml.htmlString,  pchtml.HTMLSTATUSSTRING),
+    (pchtml.htmlStatus  , pchtml.HTMLSTATUSSTRING),
     (pchtml.htmlStreamSize, {'streamsizes': pcf.minisizes}),
     (pchtml.htmlInt,        {
             'readersOn': ('app', 'pers', 'html'),
