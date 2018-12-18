@@ -40,3 +40,10 @@ and add the line
 and add the line
 > @reboot              ~/piCameraWeb/start.sh
 (adjust the folder name to match the folder this package is in.)
+## Running interactively and logging
+The main program uses argparse so run it with -j to see argument details. In particular you can arrange all logging to go
+to a file rather than the console (or even do both).
+
+Also by using a command line like:
+> python3 -i webserv.py -v 10 -c dummyConfig.py -i
+You can run interactively with the main webserver started in a new thread so you can type python in to interrogate the state and even call methods to do various things in parallel with the web service running.
