@@ -1,7 +1,16 @@
 #!/usr/bin/python3
 """
 This module provides a class for node based trees, the class provided can be used as a base or mixin
-for hierarchical object trees
+for hierarchical object trees.
+
+The primary class inherits from OrderedDict, so child nodes can be selected using standard dict notation.
+In addition __getitem__ is redefined to allow filesystem like navigation using '..' and '/'. This does mean
+that '/'  and '..' can't be used as part of node names.
+
+Examples:
+    node['childx']      - selects the child node named 'childx' of the current node.
+    node['../siblingx'] - selects the sibling node named 'siblingx' of the current node - that is the 
+                          child node 'siblingx' of the parent of the current node.
 """
 
 from collections import Hashable
@@ -30,6 +39,20 @@ class treeob(OrderedDict):
         self.app=app
         if not parent is None:
             parent[self.name]=self
+
+    def __getitem__(self, nname):
+        splitname=nname.split('/')
+        if len(splitname)==1:
+            return super().__getitem__(nname)
+        cnode=self
+        for pname in splitname:
+            if pname=='':
+                cnode=self.app
+            elif pname=='..':
+                cnode=cnode.parent
+            else:
+                cnode=cnode.__getitem__(pname)
+        return cnode
 
     hiernamesep='*'
 

@@ -391,16 +391,23 @@ class listVar(baseVar):
         """
         vlists: a dict with 1 entry per view, the value of each entry is the list of values for that view.
                 all lists must be the same length. There must be an entry for each views entry.
+                - or -
+                a list of values that will used for *all* views
         """
-        assert isinstance(vlists, Mapping), 'vlist parameter is not a mapping, it is a {}'.format(type(vlists).__name__)
-        vlen=None
-        for v,l in vlists.items():
-            assert v in app.allviews
-            if vlen is None:
-                vlen=len(l)
-            else:
-                assert vlen==len(l),'vlist lengths inconsistent - {} and {}' .format( vlen, len(l))
-        self.viewlists=vlists
+        if isinstance(vlists, Mapping):
+            vlen=None
+            for v,l in vlists.items():
+                assert v in app.allviews
+                if vlen is None:
+                    vlen=len(l)
+                else:
+                    assert vlen==len(l),'vlist lengths inconsistent - {} and {}' .format( vlen, len(l))
+            self.viewlists=vlists
+            print('from maping', self.viewlists.keys())
+        else:
+            assert not isinstance(vlists, str) and hasattr(vlists,'__iter__'), 'vlist parameter is not a mapping or a list, it is a {}'.format(type(vlists).__name__)
+            self.viewlists={v: vlists for v in app.allviews}
+            print(self.viewlists.keys())
         super().__init__(app=app, **kwargs)
 
     def _validValue(self, view, value):

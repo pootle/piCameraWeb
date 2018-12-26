@@ -3,11 +3,13 @@
 Add on for piCamHandler that works with webserv.
 """
 import logging
+import pathlib
 import piCamHandler as pch
 import piCamFields as pcf
 import piCamHtml as pchtml
 import pforms
 import threading
+import pypnm
 
 from piCamActMoveCPU import cpumovetable
 from piCamActMoveGPIO import extmovetable
@@ -51,7 +53,6 @@ class piCamWeb(pch.cameraManager):
         """
         Called via the webserver from the web browser to update a single app variable and return a response
         """
-        print ('update request for {} to {}'.format(t[0],v))
         splitn=t[0].split(sep=self.hiernamesep, maxsplit=1)
         if splitn[0]==self.name:
             return self.webUpdate(splitn[1],v)
@@ -63,7 +64,21 @@ class piCamWeb(pch.cameraManager):
         vars that can be updated by the app, and which we want to show to the user on the web page, use this callback to arrange
         for the front end to be updated.
         """
+        print('piCamWeb.piCamWeb.dynamicUpdate using webv on var',var.fhtmlid)
         self.webserver.addDynUpdate(var.fhtmlid, var.getValue('webv'))
+
+    def setdetectmask(self, x):
+        if 'mask' in x and 'name' in x:
+            tfile=pathlib.Path(self['settings']['cpumove']['maskfolder'].getValue('app')).expanduser()/x['name']
+            if tfile.parent.is_dir():
+                img=pypnm.pbm(imgdata=x['mask'], comments=[b'picamera mask from user',])
+                img.writeFile(str(tfile))
+                print('mask >{}< is {} x {}, saved to file {}'.format(x['name'], len(x['mask'][0]), len(x['mask']),str(tfile)))
+                return {'resp':200, 'rdata':x['name']+' saved'}
+            else:
+                return {'resp':403, 'rmsg': 'invalid save directory '+ str(tfile.parent)}
+        else:
+            return {'resp':501, 'rmsg':"incorrect data" }       
 
 class htmlgentable(pforms.groupVar):
     """

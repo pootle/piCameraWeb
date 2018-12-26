@@ -100,7 +100,7 @@ class camResolution(picamAttrMixin, pforms.listVar):
     """
     resolutions={
         'ov5647' : (('3280x2464', '1640x1232', '1640x922', '1920x1080', '1280x720', '640x480'),
-                    '640x480'),
+                    '1640x1232'),
                     
         'imx219' : (('2592x1944','1296x972','640x480'),
                     '1296x972')
@@ -174,7 +174,7 @@ class camFramerate(picamAttrMixin, pforms.intervalVar):
     defaultName='framerate'
 
     def __init__(self, readers, writers, **kwargs):
-        super().__init__(fallbackValue=10,
+        super().__init__(fallbackValue=30,
                 readers=pforms.extendViews(readers, {'app': '_getCValue', 'pers': '_getCValue'}),
                 writers=pforms.extendViews(writers, {'app': '_validNum', 'pers': '_validNum'}),
                 minv=.1, maxv=90, interval=.01,
@@ -291,11 +291,11 @@ stdstreamsizes={
 
 minisizes={ # table used for cpu based motion analysis with added smaller sizes
     'ov5647' : (((1640,1232), (1230,924), (1200,900), (820,616), (800,600), (640,480), (410,308), (640,480), (320, 240), 
-                        (280, 210), (200, 150), (128, 96)),
-                (200,150)),
+                        (280, 210), (200, 150), (128, 96), (64, 48)),
+                (64, 48)),
     'imx219' : (((1296,972), (972,729), (864,648), (800,600), (648,486), (640,480), (432,324), (320, 240), 
                         (280, 210), (200, 150), (128, 96), (64, 48)),
-                (200,150))
+                (64, 48))
 }
 
 class streamResize(pforms.listVar):
@@ -306,7 +306,7 @@ class streamResize(pforms.listVar):
 
     def __init__(self, app, parent, name=None, streamsizes=stdstreamsizes, **kwargs):
         """
-        Parent is a multiCam object with camType already setup
+        App is a multiCam object with camType already setup
         
         If the value parameter is not valid for the current camera it silently resets to a sensible value
         """

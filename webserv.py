@@ -78,33 +78,55 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
         if pathchecked[0]:
             pname, pathdef, pagetype,  targetob, ofunc, params = pathchecked[1:]
             th=self.headers['Content-Type']
-            boundary = th.split("=")[1]
-            bytesleft = int(self.headers['Content-length'])
-            line = self.rfile.readline().decode("utf-8")
-            bytesleft-= len(line)
-            if not boundary in line:
-                self.send_error(505,'Content NOT begin with boundary')
-                return
-            line = self.rfile.readline().decode("utf-8")
-            bytesleft-= len(line)
-            while not line.startswith('{'):
+            if th=='application/json':
+                dlength=int(self.headers['Content-Length'])
+                ddata=self.rfile.read(dlength)
+                if len(ddata) != dlength:
+                    print("HELEPELPELPELEPLEPELEPLE")
+                    self.send_error(501,'oops')
+                else:
+                    jdata=json.loads(ddata.decode('utf-8'))
+                    result=ofunc(jdata)
+                    # result is a dict with:
+                    #   resp: the response code - if 200 then good else bad
+                    #   rdata: (only if resp==200) data (typically a dict) to json encode and return as the data
+                    #   rmsg: (only if resp != 200) the message to return with the fail code
+                    if result['resp']==200:
+                        datats=json.dumps(result['rdata'])
+                        self.send_response(200)
+                        self.send_header('Content-Type', 'application/json; charset=utf-8')
+                        self.end_headers()
+                        self.wfile.write(datats.encode('utf-8'))
+                    else:
+                        self.send_error(result['resp'], result['rmsg'])
+            else:
+                boundary = th.split("=")[1]
+                bytesleft = int(self.headers['Content-length'])
                 line = self.rfile.readline().decode("utf-8")
                 bytesleft-= len(line)
-            updata=line
-            while len(updata) < bytesleft:
+                if not boundary in line:
+                    self.send_error(505,'Content NOT begin with boundary')
+                    return
                 line = self.rfile.readline().decode("utf-8")
-                bpos=line.find(boundary)
-                if bpos==-1:
-                    updata+=line
-                else:
-                    bytesleft -= len(line)
-                    if bytesleft>len(updata):
-                        print('puzzled bytesleft {}, data length {}'.format(bytesleft, len(updata)))
-            self.send_response(200)
-            self.send_header('Content-Type', 'text/html; charset=utf-8')
-            self.end_headers()
-            self.wfile.write(b'ok')
-            ofunc(updata)
+                bytesleft-= len(line)
+                while not line.startswith('{'):
+                    line = self.rfile.readline().decode("utf-8")
+                    bytesleft-= len(line)
+                updata=line
+                while len(updata) < bytesleft:
+                    line = self.rfile.readline().decode("utf-8")
+                    bpos=line.find(boundary)
+                    if bpos==-1:
+                        updata+=line
+                    else:
+                        bytesleft -= len(line)
+                        if bytesleft>len(updata):
+                            print('puzzled bytesleft {}, data length {}'.format(bytesleft, len(updata)))
+                self.send_response(200)
+                self.send_header('Content-Type', 'text/html; charset=utf-8')
+                self.end_headers()
+                self.wfile.write(b'ok')
+                ofunc(updata)
         else:
             self.send_error(pathchecked[1],pathchecked[2])
         
@@ -124,6 +146,7 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                 except:
                     logException(self.server.log, 'failed handling {}'.format(pname), sys.exc_info())
                     self.send_error(500,'do get datafunc call crashed')
+                    return
                 # result is a dict with:
                 #   resp: the response code - if 200 then good else bad
                 #   rdata: (only if resp==200) data (typically a dict) to json encode and return as the data
@@ -475,7 +498,7 @@ if __name__ == '__main__':
     print(smsg)
     toplog.info(smsg)
     server = ThreadedHTTPServer(('',serverconf['port']),pywebhandler, mypyconf=serverconf)
-    if 'interactive' in args:
+    if args.interactive:
         print('interactive mode')
         sthread=threading.Thread(target=server.serve_forever)
         sthread.start()

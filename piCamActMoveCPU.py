@@ -5,10 +5,12 @@ Module to provide cpu based movement detection, within a piCamHandler environmen
 
 import logging
 import numpy, queue, time
+import numpy.ma as nam 
 
 import papps
 import piCamHtml as pchtml
 import piCamFields as pcf
+import pypnm
 
 class changedImage():
     """
@@ -18,7 +20,7 @@ class changedImage():
     This class compares a new image against the previous image by counting all cells where the difference
     between images is greater than a threshold value, then checking how many such cells there are.
     """
-    def __init__(self, vars, imagesize):
+    def __init__(self, vars, imagesize, loglvl=logging.DEBUG):
         """
         sets up a change test. Only Y value is used
         
@@ -26,11 +28,44 @@ class changedImage():
         
         imagesize: tuple of the size of the image we expect (any passed image is cropped to this size)
         """
+        self.log=None if loglvl is None else logging.getLogger(__loader__.name+'.'+type(self).__name__)
+        self.loglvl=1000 if loglvl is None else loglvl
         self.vars=vars
         self.imagesize=imagesize
         self.workarray=numpy.empty((self.imagesize[1], self.imagesize[0]), dtype=numpy.int16)
         self.prevImage=False
         self.hitcount=0
+        self.setMask()
+
+    def setMask(self):
+        maskfile=self.vars['mask'].getFile()
+        self.mask=None
+        if maskfile is None:
+            if self.loglvl <= logging.INFO:
+                self.log.info('no mask set')
+            return
+        try:
+            img=pypnm.open(maskfile)
+        except ValueError as ve:
+            if self.loglvl <= logging.CRITICAL:
+                help(ve)
+                self.log.critical('no mask set, error opening file {}: {}'.format(str(maskfile), 'WHAT?'))
+            return
+        if img.imgtype() != 'PBM':
+            if self.loglvl <= logging.CRITICAL:
+                self.log.critical('mask file {} is wrong type'.format(str(maskfile)))
+            return
+        if img.width!=self.imagesize[0] or img.height != self.imagesize[1]:
+            if self.loglvl <= logging.CRITICAL:
+                self.log.critical('mask file error. mask file {} is size {},{} imagestream is {},{}'.format(
+                        str(maskfile), img.width, img.height, self.imagesize[0], self.imagesize[1]))
+            return
+        img.loadImage()
+        m=numpy.array(img.imgdata,dtype=numpy.bool_)
+        if self.loglvl <= logging.INFO:
+            self.log.info('using mask from file {}, data type is {}, size is {}, {} cells are ignored'.format(
+                    str(maskfile), str(m.dtype), m.shape, numpy.count_nonzero(m)))
+        self.mask=m
 
     def check(self, newimage):
         """
@@ -40,7 +75,10 @@ class changedImage():
         
         returns   a boolean, True if change detected
         """
-        imin=newimage[0, :self.imagesize[1], :self.imagesize[0]]
+        if self.mask is None:
+            imin=newimage[0, :self.imagesize[1], :self.imagesize[0]]
+        else:
+            imin=nam.masked_array(data=newimage[0, :self.imagesize[1], :self.imagesize[0]], mask=self.mask)
         if self.prevImage:
             self.workarray -= imin
             numpy.absolute(self.workarray, self.workarray)
@@ -57,8 +95,8 @@ class ciActivity(papps.appThreadAct):
     def __init__(self, inQ, outQ, analyser, analyserparams, **kwargs):
         self.inQ = inQ
         self.outQ= outQ
-        self.engine=analyser(**analyserparams)
         super().__init__(**kwargs)
+        self.engine=analyser(**analyserparams)
 
     def run(self):
         self.startDeclare()
@@ -85,7 +123,7 @@ def calcbuff(width, height):
     return (3, int((height+15)/16)*16, int((width+31)/32)*32)
 
 class mover(papps.appThreadAct):
-    """    
+    """
     When movement detected, variables 'triggercount' and 'lasttrigger' are updated.
     
     The actual analysis is run in a separate thread. Since most of the work is in numpy, this thread does not block
@@ -115,11 +153,18 @@ class mover(papps.appThreadAct):
         self.currentBuff=None
         self.procCount=0
         self.startDeclare()
-        self.parent.picam.capture_sequence(self, resize=imgsize, format='yuv', use_video_port=True, splitter_port=self.sPort)
+        format= self.vars['imgmode'].getValue('app')
+        self.parent.picam.capture_sequence(self, resize=imgsize, format=format, use_video_port=True, splitter_port=self.sPort)
         # capture sequence now calls the __iter__  and __next__ functions for each frame read and
         # only returns when the iterator raises StopIteration
         self.parent.activities['movedetect'].requestFinish()
         self.endDeclare()
+
+    def startedlogmsg(self):
+        return super().startedlogmsg()+' size {}, format {}, channel {}'.format(
+                self.vars['resize'].getValue('app'), 
+                self.vars['imgmode'].getValue('app'),
+                99)
 
     def __iter__(self):
         return self
@@ -148,21 +193,20 @@ class mover(papps.appThreadAct):
             raise RuntimeError('Oh gawd, ran out of buffers')
         return self.currentBuff
 
-
 ############################################################################################
 # user interface setup for cpu move detection - web page version 
 ############################################################################################
 
 cpumovetable=(
     (pchtml.htmlStatus  , pchtml.HTMLSTATUSSTRING),
-    (pchtml.htmlStreamSize, {'streamsizes': pcf.minisizes}),
+    (pchtml.htmlStreamSize, {'streamsizes': pcf.minisizes, 'writersOn':('app', 'pers')}),
     (pchtml.htmlInt,        {
             'readersOn': ('app', 'pers', 'html'),
             'writersOn': ('app', 'pers', 'user'),
-            'name'     : 'startskip', 'minv':0, 'maxv':100, 'clength':4, 'fallbackValue': 1,
+            'name'     : 'startskip', 'minv':0, 'maxv':100, 'clength':4, 'fallbackValue': 10,
             'label'    : 'skip on start',
             'shelp'    : 'on startup, number of frames to skip before detection starts'}),
-    (pchtml.htmlInt,        {
+    (pchtml.htmlInt,        {'loglvl': logging.DEBUG,
             'readersOn': ('app', 'pers', 'html'),
             'writersOn': ('app', 'pers', 'user'),
             'name' : 'framediv', 'minv':1, 'maxv':10, 'clength':4, 'fallbackValue':1,
@@ -175,10 +219,37 @@ cpumovetable=(
             'label': 'cell threshold',
             'shelp': 'minimum difference for a cell to trigger'}),
     (pchtml.htmlInt,        {'name' : 'cellcount', 'minv':1, 'maxv': 5000, 'clength':4, 'fallbackValue':100,
-            'readersOn': ('app', 'pers', 'html'),
-            'writersOn': ('app', 'pers', 'user'),
-            'label': 'cell count',
-            'shelp': 'minimum number of cells over trigger level to cause movement trigger'}),
+            'readersOn' : ('app', 'pers', 'html'),
+            'writersOn' : ('app', 'pers', 'user'),
+            'label'     : 'cell count',
+            'shelp'     : 'minimum number of cells over trigger level to cause movement trigger'}),
+    (pchtml.htmlChoice, {
+            'name': 'imgmode', 'vlists': ('rgb', 'yuv'), 'fallbackValue': 'yuv',    
+            'readersOn' : ('app', 'pers', 'html'),
+            'writersOn' : ('app', 'pers', 'user'),
+            'label'     : 'image mode',
+            'shelp'     : 'defines if images are captured in rgb or yuv - only takes effect when next started.'}),
+    (pchtml.htmlInt,        {'name' : 'channel', 'minv':0, 'maxv': 2, 'clength':2, 'fallbackValue':0,
+            'readersOn' : ('app', 'pers', 'html'),
+            'writersOn' : ('app', 'pers', 'user'),
+            'label'     : 'channel for test',
+            'shelp'     : 'movement is analysed using a single channel from yuv or rgb'}),
+    (pchtml.htmlString, {
+            'name': 'maskfolder',
+            'readersOn' : ('app', 'pers', 'html', 'webv'),
+            'writersOn' : ('app', 'pers'),
+            'fallbackValue': '~/pootlecam/movemasks', 'clength':15,
+            'label'     : 'image masks folder',
+            'shelp'     : 'folder to hold image mask files'            
+    }),
+    (pchtml.htmlFolderFile, {
+            'name'      : 'mask', 'loglvl':logging.DEBUG,
+            'basefoldervar': '../maskfolder',
+            'readersOn' : ('app', 'pers', 'html', 'webv'),
+            'writersOn' : ('app', 'pers', 'user'),
+            'label'     : 'use image mask',
+            'shelp'     : 'enable / select image mask file'
+    }),
     (pchtml.htmlCyclicButton, {
             'name' : 'run',  'fallbackValue': 'start now', 'alist': ('start now', 'stop now '),
             'onChange'  : ('dynamicUpdate','user'),

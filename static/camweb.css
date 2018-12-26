@@ -91,9 +91,6 @@ td.helpbtn
 }
 
 .eventable {
-    position:absolute;
-    left: 5px;
-    top: 5px;
     display:table;
     width:640px;
     table-layout:fixed;
@@ -248,4 +245,9 @@ td.helpbtn
     background: #639D1E;
     padding: 3px;
     cursor : pointer;
+}
+
+#livestream >img{
+    width: 640px;
+    height: 480px;
 }

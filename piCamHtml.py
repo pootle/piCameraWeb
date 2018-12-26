@@ -4,11 +4,10 @@ mixins and extensions for pforms and piCamFields classes that support web page g
 """
 
 import logging
+import pathlib
 
-import pforms
+import pforms, ptree
 import piCamFields as pcf
-
-
 
 class htmlgenBase():
     """
@@ -79,6 +78,9 @@ class htmlgenOption(htmlgenBase):
             self.log.debug('_getHtmlInputValue returns %s' % mv)
         return mv
 
+    def _getHtmlOutputValue(self):
+        return self.genFixedContent.format(f=self, sval=self.getValue('pers'))
+
     def webUpdateValue(self, value):
         if self.setValue('user', value[0]):
             return {'resp':200, 'rdata': '{} updated to {}'.format(self.name, str(self.getValue('app')))}
@@ -127,8 +129,6 @@ class htmlgenPlainText(htmlgenBase):
 
     def _getSValue(self, view):
         return self._getVar()
-
-    
 
 class htmlgenNumber(htmlgenBase):
     """
@@ -197,11 +197,20 @@ class htmlPlainString(htmlgenPlainText, pforms.textVar):
 
 class htmlFloat(htmlgenNumber, pforms.numVar):
     """
-    generic html float
+    generic html float var
     """
     pass
 
 class htmlInt(htmlgenNumber, pforms.intervalVar):
+    """
+    generic html int var
+    """
+    pass
+
+class htmlChoice(htmlgenOption, pforms.listVar):
+    """
+    generic choice field for simple drop down lists
+    """
     pass
 
 class htmlCyclicButton(htmlgenBase, pforms.listVar):
@@ -237,9 +246,7 @@ class htmlFolder(htmlgenBase, pforms.folderVar):
                 **kwargs)
         
     def _getHtmlInputValue(self):
-#        print('trees')
         dets=self._getDictValue(None)
-#        print(dets)
         topname=list(dets.keys())[0]
         entries=sorted([v for v in dets[topname]['inner'].values() if v['type'] is None], key=lambda x: x['path'].name)
         dlist='\n'.join([self.folderitemhtml.format(e) for e in entries])
@@ -251,6 +258,196 @@ class htmlFolder(htmlgenBase, pforms.folderVar):
         if val is None:
             x=17/0
         else:
-#            print('setting value', val)
             super()._setVar(val)
 
+class htmlFolderFile(htmlgenOption, pforms.listVar):
+    """
+    Allows user to select a file from within a folder, the folder name is specified a related var.
+    
+    Note: Currently this var must follow the basefoldervar in setup.
+    """
+    selecthtml = '''<select id="{f.fhtmlid:}" onchange="smartNotify(this, 'abcd')" >{optall:}</select>'''
+
+    def __init__(self, name, parent, app, value, basefoldervar, valueView='app', **kwargs):
+#        super(ptree.treeob).__init__(name=name, parent=parent, app=app)
+# Truly horrible bit follows until I work out how to do it properly! this is the init code for a treeob in ptree
+        self.name=name
+        self.parent=parent
+        self.app=app
+        if not parent is None:
+            parent[self.name]=self
+# horrible ends       
+        self.base=pathlib.Path(self[basefoldervar].getValue(valueView)).expanduser()
+        if self.base.exists():
+            assert self.base.is_dir()
+        else:
+            self.base.mkdir(parents=True, exist_ok=True)
+        fl=[f.name for f in self.base.iterdir() if not f.name.startswith('.')]
+        fl.insert(0, '-off-')
+        if value is None:
+            value='-off-'
+#        rdr=pforms.extendViews(readers, {'html': '_getHtmlValue', 'app': '_getAppValue', 'webv': '_getStrValue', 'pers': '_getStrValue'})
+#        wtr=pforms.extendViews(writers, {'user': '_validValue', 'app': '_validValue', 'pers': '_validValue'})
+        super().__init__(name=name, parent=parent, app=app, value=value, vlists=fl, valueView=valueView, **kwargs)
+
+    def getFile(self):
+        """
+        If the value is a file, returns a pathlib Path for the file, otherwise returns None
+        """
+        vidx=self._getVar()
+        if vidx == 0:
+            return None
+        fpath=self.base/self.getValue('app')
+        return fpath if fpath.is_file() else None        
+
+    def webUpdateValue(self, value):
+        """
+        This works in conjunction with the js function smartNotify to apply updates and return data to update the webpage appropriately
+        """
+        if self.setValue('user', value[0]):
+            rdata={'msg': '{} updated to {}'.format(self.name, str(self.getValue('app'))),
+                  }
+        else:
+            rdata={'msg': '{} unchanged at {}'.format(self.name, str(self.getValue('app'))),
+                  }
+        cval=self._getVar()
+        rdata['innerHTML']= ''.join([
+            self.optionhtml.format(
+                oval=optval, odisp=optval, sel=' selected' if optix==cval else '')
+                for optix, optval in enumerate(self.viewlists['html'])])
+        if self.loglvl <= logging.DEBUG:
+            self.log.debug('update for {} returns {}'.format(self.fhtmlid, rdata))
+        return {'resp':200, 'rdata': rdata}
+
+class htmlFile(htmlgenOption, pforms.listVar):
+    """
+    experimental - tracks a file and provides simple navigation through file system.
+    """
+
+    selecthtml = '''<select id="{f.fhtmlid:}" onchange="smartNotify(this, 'abcd')" >{optall:}</select>'''
+
+    def __init__(self, value, fallbackValue='~/', valueView='app', readers=None, writers=None, **kwargs):
+        if value is None:
+            v=pathlib.Path(fallbackValue).expanduser()
+            value='-off-'
+        else:
+            try:
+                v=pathlib.Path(value).expanduser()
+            except:
+                v=None
+            if v is None:
+                v=pathlib.Path(fallbackValue).expanduser()
+        if v.is_dir():
+            value='-off-'
+        else:
+            value=v.name
+        self.valuePath=v
+        flist=self._makelists()
+        rdr=pforms.extendViews(readers, {'html': '_getHtmlValue', 'app': '_getAppValue', 'webv': '_getStrValue', 'pers': '_getStrValue'})
+        wtr=pforms.extendViews(writers, {'user': '_validValue', 'app': '_validValue', 'pers': '_validValue'})
+        s=set(rdr.keys()).union(wtr.keys())
+        vlists={k:flist for k in s}
+        print('htmlfile.__init__ calls super constructor with value {}'.format(value))
+        super().__init__(readers=rdr, writers=wtr, value=value, vlists=vlists, fallbackValue=None, valueView=valueView, **kwargs)
+
+    def getFile(self):
+        """
+        If the value is a file, returns a pathlib Path for the file, otherwise returns None
+        """
+        return self.valuePath if self.valuePath.is_file() else None
+
+    def _makelists(self):
+        v=self.valuePath
+        if v.exists():
+            if v.is_dir():
+               flist=[f.name for f in v.iterdir() if not f.name.startswith('.')]  
+               value='-off-'
+            else:
+               w=v.parent
+               flist=[f.name for f in w.iterdir() if not f.name.startswith('.')]  
+               value=v.name
+        else:
+            flist=[]
+            value='-off-'
+        flist.insert(0, '-off-')
+        flist.insert(0, '..')
+        return flist
+
+    def setValue(self, view, value):
+        """
+        Sets the var's value after conversion from the given view. Calls any onChange callbacks
+        if the value changes.
+        
+        This updates the list of values as the user navigates through the directory tree
+        
+        view: name of the view to be used.
+        
+        value: new value expressed in the given view
+        
+        returns True if the value changes, else False
+        
+        raises  RuntimeError if the view is not known
+                ValueError if the value is not valid in the given view
+        """
+        if view in self.viewUpdate:
+            newv=self.viewUpdate[view](view, value)
+            oldValue=self._getVar()
+            if newv==1:
+                self.valuePath=self.valuePath.parent
+                changed=True
+            elif newv==0:
+                if oldValue==0:
+                    changed=False
+                else:
+                    changed=True
+            else:
+                if self.valuePath.is_dir():
+                    self.valuePath=self.valuePath/value
+                    changed=True
+                else:
+                    if newv==oldValue:
+                        changed=False
+                    else:
+                        self.valuePath=self.valuePath.parent/value
+                        changed=True
+            if changed:
+                self._setVar(newv)
+                flist=self._makelists()
+                self.viewlists={k:flist for k in self.viewlists.keys()}
+                if self.loglvl <= logging.DEBUG:
+                    self.log.debug('var {} view {} with value {} updated {} to {}'.format(self.name, view, value, oldValue, newv))
+                if view in self.onChange:
+                    for f in self.onChange[view]:
+                        f(oldValue=oldValue, newValue=newv, view=view, var=self)
+                return True
+            else:
+                if self.loglvl <= logging.DEBUG:
+                    self.log.debug('var {} view {} with value {} is unchanged'.format(self.name, view, value))
+                return False
+        else:
+            raise RuntimeError('view {} not known in field {}'.format(view, self.name))
+
+    def webUpdateValue(self, value):
+        """
+        This works in conjunction with the js function smartNotify to apply updates and return data to update the webpage appropriately
+        """
+        if self.setValue('user', value[0]):
+            rdata={'msg': '{} updated to {}'.format(self.name, str(self.getValue('app'))),
+                  }
+        else:
+            rdata={'msg': '{} unchanged at {}'.format(self.name, str(self.getValue('app'))),
+                  }
+        cval=self._getVar()
+        rdata['innerHTML']= ''.join([
+            self.optionhtml.format(
+                oval=optval, odisp=optval, sel=' selected' if optix==cval else '')
+                for optix, optval in enumerate(self.viewlists['html'])])
+        if self.loglvl <= logging.DEBUG:
+            self.log.debug('update for {} returns {}'.format(self.fhtmlid, rdata))
+        return {'resp':200, 'rdata': rdata}
+
+    def _getAppValue(self, view):
+        return self.valuePath
+
+    def _getStrValue(self, view):
+        return str(self.valuePath)

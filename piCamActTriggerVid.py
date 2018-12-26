@@ -4,7 +4,7 @@ module to run video to a circular buffer and, when triggered, writes
 previous few seconds to file and keeps writing till no trigger received
 for several seconds
 """
-import picamera, logging, time, datetime, shutil
+import picamera, logging, time, datetime, shutil, pathlib
 from subprocess import Popen, PIPE
 
 import papps
@@ -54,7 +54,7 @@ class triggeredVideo(papps.appThreadAct):
                 self.vars['triggercount'].setValue('app',self.vars['triggercount'].getValue('app')+1)
                 self.vars['lasttrigger'].setValue('app', time.time())
                 tnow=datetime.datetime.now()
-                tfile=(self.vars['basefolder'].getValue('app')/tnow.strftime(self.vars['file'].getValue('app'))).with_suffix('.mp4')
+                tfile=(pathlib.Path(self.vars['basefolder'].getValue('app')).expanduser()/tnow.strftime(self.vars['file'].getValue('app'))).with_suffix('.mp4')
                 tfile.parent.mkdir(parents=True, exist_ok=True)
                 afile=(tfile.parent/(tfile.stem+'after')).with_suffix('.h264')
                 bfile=(tfile.parent/(tfile.stem+'before')).with_suffix('.h264')
@@ -114,12 +114,20 @@ tripvidtable=(
             'label':'post-trigger record time', 
             'shelp':'number of seconds after trigger ends to include in video',
     }),
-    (pchtml.htmlFolder, {#'loglvl':logging.DEBUG,
-            'readersOn': ('app', 'pers', 'html'),
-            'writersOn': ('app', 'pers', 'user'),    
-            'name' : 'basefolder', 'fallbackValue': '~/movevids',
-            'label': 'video folder',
-            'shelp': 'base folder for saved video files'}),
+    (pchtml.htmlString, {
+            'name': 'basefolder',
+            'readersOn' : ('app', 'pers', 'html', 'webv'),
+            'writersOn' : ('app', 'pers'),
+            'fallbackValue': '~/movevids', 'clength':15,
+            'label'     : 'video folder',
+            'shelp'     : 'base folder for recorded videos'            
+    }),
+#    (pchtml.htmlFolder, {#'loglvl':logging.DEBUG,
+#            'readersOn': ('app', 'pers', 'html'),
+#            'writersOn': ('app', 'pers', 'user'),    
+#            'name' : 'basefolder', 'fallbackValue': '~/movevids',
+#            'label': 'video folder',
+#            'shelp': 'base folder for saved video files'}),
     (pchtml.htmlString, {
             'readersOn': ('app', 'pers', 'html'),
             'writersOn': ('app', 'pers', 'user'),    

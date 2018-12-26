@@ -22,6 +22,7 @@ serverdef={
             'camweb.css'     : {'pagetype': 'static',      'pagefile': 'camweb.css'},
             'smoothie.js'    : {'pagetype': 'static',      'pagefile': 'smoothie.js'},
             'pipyscripts.js' : {'pagetype': 'static',      'pagefile': 'pipyscripts.js', 'log':0},
+            'pimaskedit.js'  : {'pagetype': 'static',      'pagefile': 'pimaskedit.js'},
             'newweb.js'      : {'pagetype': 'static',      'pagefile': 'newweb.js'},
             'favicon.ico'    : {'pagetype': 'static',      'pagefile': 'rasppi.ico', 'log':0},
             'streamstats'    : {'pagetype': 'genstream',   'obid': 'pootlecam', 'func': 'streamstates', 'period': 5.45},
@@ -34,6 +35,7 @@ serverdef={
             },
     'postpaths': {          # paths to be handled by do_POST
             'setSettings'    : {'pagetype': 'upload',      'obid': 'pootlecam', 'func': 'putSettings'},
+            'setdetectmask'  : {'pagetype': 'datafunc',    'obid': 'pootlecam', 'func': 'setdetectmask'},
         },
     'obdefs'   : {
         'pistat'        : {'ondemand': {'className': 'utils.systeminfo', 'fields': ('busy', 'cputemp')}},

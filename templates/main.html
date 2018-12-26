@@ -5,11 +5,12 @@
        <script src="smoothie.js"></script>
        <script src="pipyscripts.js"></script>
        <script src="newweb.js"></script>
+       <script src="pimaskedit.js"></script>
    </head>
    <body>
        <div id="header">
            <table width="100%">
-               <tr><td rowspan="2"><h2>Pootle's pi camera demo</h2></td><td id="appstatus">app status goes here</td></td></tr>
+               <tr><td rowspan="2"><h2>Pootle's pi camera demo</h2></td><td id="appstatus"></td></td></tr>
                <tr><td id="appmessage">messages go here</td></tr>
            </table>
            <table>
@@ -32,21 +33,26 @@
                    {strmctrl:}
                    <td><a class="intlink" href="settings">download settings</a></td>
                    <td><form id="uploadbanner" enctype="multipart/form-data" method="post" action="setSettings">
-                            <input id="fileupload" name="myfile" type="file" />
-                            <span title="upload settings" class="clicker clicker0" onclick="appUpload('fileupload')" >upload</span>
-                    </form></td>
+                        <input id="fileupload" name="myfile" type="file" />
+                        <span title="upload settings" class="clicker clicker0" onclick="appUpload('fileupload')" >upload</span>
+                   </form></td>
                </tr>
            </table>
        </div>
        <div>
            <div class="aftertabby">
-               <div id="livedivoff" ><img src="nocam.png" width="640" height="480" title="click here for live view" onclick="livestreamstart('imgel')"/></div>
-               <div id="livedivon" style="display:none" >
-                   <div id="livestream">nothing to see here.</div>
-                   <div class="eventable">
-                       <div class="evencell">A</div>
-                       <div class="evencell">B</div>
-                       <div class="evencell" onclick="livestreamstop('imgel')" title="click to stop live view" >&#x2718</div>
+               <div class="eventable">
+                   <div class="evencell">A</div>
+                   <div class="evencell" onclick="editmaskstart(this)" title="click to edit mask for cpu mpvement">edit mask</div>
+                   <div class="evencell" onclick="livestreamstop('imgel')" title="click to stop live view" >&#x2718</div>
+               </div>
+               <div>
+                   <div id="livedivoff" ><img src="nocam.png" width="640" height="480" title="click here for live view" onclick="livestreamstart('imgel')"/></div>
+                   <div id="livedivon" style="display:none; width:640px; height:480px" >
+                       <div id="livestream">nothing to see here.</div>
+                       <div id="livemaskdiv" style="display:none; position:absolute; top:0px; left:0px; width:100%; height:100%">
+                          <canvas id="livemaskcanv"></canvas>
+                       </div>
                    </div>
                </div>
            </div>

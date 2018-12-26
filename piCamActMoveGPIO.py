@@ -80,7 +80,7 @@ class externalmover(papps.appThreadAct):
 extmovetable=(
     (pchtml.htmlStatus  , pchtml.HTMLSTATUSSTRING),
     (pchtml.htmlInt,        {
-            'name'      : 'triggerpin', 'minv':1, 'maxv':63, 'clength':2, 'fallbackValue': 1,'loglvl': logging.DEBUG,
+            'name'      : 'triggerpin', 'minv':1, 'maxv':63, 'clength':2, 'fallbackValue': 17,'loglvl': logging.DEBUG,
             'readersOn' : ('html', 'app', 'pers'),
             'writersOn' : ('app', 'pers', 'user'),            
             'label'     : 'gpio pin',
@@ -101,7 +101,7 @@ extmovetable=(
     (pchtml.htmlTimestamp, {'name': 'lasttrigger', 'fallbackValue':0,
             'strft': '%H:%M:%S' , 'unset':'never',
             'onChange': ('dynamicUpdate','app'),
-            'label': 'time of last trigger',
+            'label': 'last trigger time',
             'shelp': 'time last triggered (rising edge) detected'}),
     (pchtml.htmlTimestamp, {'name': 'started', 'fallbackValue':0,
             'strft': '%H:%M:%S' , 'unset':'never',
