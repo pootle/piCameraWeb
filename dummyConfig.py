@@ -29,8 +29,10 @@ serverdef={
             'pistatus'       : {'pagetype': 'genstream',   'obid': 'pistat', 'period': 1.9},
             ''               : {'pagetype': 'appPage',     'obid': 'pootlecam', 'func': 'topPage'},
             'vstream.mjpg'   : {'pagetype': 'vidstream',   'obid': 'pootlecam', 'func': 'startLiveStream'},
+            'detstream.mjpg' : {'pagetype': 'vidstream',   'obid': 'pootlecam', 'func': 'startDetectStream'},
             'updateSetting'  : {'pagetype': 'datafunc',    'obid': 'pootlecam', 'func': 'updateSetting'},
             'dynupdates'     : {'pagetype': 'dynupdates'},
+            'fetchmask'      : {'pagetype': 'datafunc',    'obid': 'pootlecam', 'func': 'fetchmask'},
             'settings'       : {'pagetype': 'download',    'obid': 'pootlecam', 'func': 'fetchSettings'},
             },
     'postpaths': {          # paths to be handled by do_POST

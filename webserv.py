@@ -189,7 +189,7 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                     logException(self.server.log, 'failed handling {}'.format(pname), sys.exc_info())
                     self.send_error(500,'do get datafunc call crashed')
             elif 'vidstream'==pagetype:
-                output=targetob.startLiveStream()
+                output=ofunc()
                 self.send_response(200)
                 self.send_header('Age', 0)
                 self.send_header('Cache-Control', 'no-cache, private')

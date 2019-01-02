@@ -12,6 +12,7 @@ import threading
 import pypnm
 
 from piCamActMoveCPU import cpumovetable
+from piCamActMoveCPU import fetchmask
 from piCamActMoveGPIO import extmovetable
 from piCamActLiveStream import livestreamtable
 from piCamActTriggerVid import tripvidtable
@@ -61,8 +62,8 @@ class piCamWeb(pch.cameraManager):
 
     def dynamicUpdate(self, var, view, oldValue, newValue):
         """
-        vars that can be updated by the app, and which we want to show to the user on the web page, use this callback to arrange
-        for the front end to be updated.
+        vars that can be updated by the app, and which we want to show to the user on the web page, use this callback
+        at setup time to arrange for the front end to be updated.
         """
         print('piCamWeb.piCamWeb.dynamicUpdate using webv on var',var.fhtmlid)
         self.webserver.addDynUpdate(var.fhtmlid, var.getValue('webv'))
@@ -78,7 +79,17 @@ class piCamWeb(pch.cameraManager):
             else:
                 return {'resp':403, 'rmsg': 'invalid save directory '+ str(tfile.parent)}
         else:
-            return {'resp':501, 'rmsg':"incorrect data" }       
+            return {'resp':501, 'rmsg':"incorrect data" }
+
+    def fetchmask(self):
+        print('yoohoo')
+        print(self['settings']['cpumove'].keys())
+        maskdata=fetchmask(self, self['settings']['cpumove'])
+        if maskdata is None:
+            rdata={'msg': 'no mask file known'}
+        else:
+            rdata={'msg':'I got the data', 'mdata': maskdata}
+        return {'resp': 200, 'rdata': rdata}
 
 class htmlgentable(pforms.groupVar):
     """

@@ -154,6 +154,9 @@ class cameraManager(papps.appManager):
         self.setSplitterPort(sport, act)
         return act
 
+    def startDetectStream(self):
+        return None
+
     def startLiveStream(self):
         if not 'livevid' in self.activities:
             act=self.startPortActivity('livevid', liveVidStream)

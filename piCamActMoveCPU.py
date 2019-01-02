@@ -5,12 +5,37 @@ Module to provide cpu based movement detection, within a piCamHandler environmen
 
 import logging
 import numpy, queue, time
-import numpy.ma as nam 
+import numpy.ma as nam
+import png, pathlib
 
 import papps
 import piCamHtml as pchtml
 import piCamFields as pcf
 import pypnm
+
+def makepalette(thresh):
+    threshctr=thresh/2
+    palette=[]
+    for i in range(int(threshctr)):
+        palette.append((0,0,0))
+    threshctr=thresh *.75
+    while len(palette) < threshctr:
+        palette.append((40,40,100))
+    threshctr=thresh
+    while len(palette) < threshctr:
+        palette.append((90,90,200))
+    threshctr=thresh*1.25
+    while len(palette) < threshctr:
+        palette.append((40,100,40))
+    nextrange=thresh*2 - len(palette)  # say 7 if threshold is 10 - number of entries we'll write
+    gvalues=[int(100+155/nextrange*i) for i in range(nextrange)]
+    for g in gvalues:
+        palette.append((40,g,40))
+    rleft=255-len(palette)
+    bvalues=[int(100+155/rleft*b) for b in range(rleft)]
+    for b in bvalues:
+        palette.append((40,40,b))
+    return palette
 
 class changedImage():
     """
@@ -36,36 +61,19 @@ class changedImage():
         self.prevImage=False
         self.hitcount=0
         self.setMask()
+        self.setDifflog()
 
     def setMask(self):
-        maskfile=self.vars['mask'].getFile()
-        self.mask=None
-        if maskfile is None:
+        imgdata=fetchmask(self, self.vars)
+        if imgdata is None:
+            self.mask=None
+            return
+        else:
+            m=numpy.array(imgdata,dtype=numpy.bool_)
             if self.loglvl <= logging.INFO:
-                self.log.info('no mask set')
-            return
-        try:
-            img=pypnm.open(maskfile)
-        except ValueError as ve:
-            if self.loglvl <= logging.CRITICAL:
-                help(ve)
-                self.log.critical('no mask set, error opening file {}: {}'.format(str(maskfile), 'WHAT?'))
-            return
-        if img.imgtype() != 'PBM':
-            if self.loglvl <= logging.CRITICAL:
-                self.log.critical('mask file {} is wrong type'.format(str(maskfile)))
-            return
-        if img.width!=self.imagesize[0] or img.height != self.imagesize[1]:
-            if self.loglvl <= logging.CRITICAL:
-                self.log.critical('mask file error. mask file {} is size {},{} imagestream is {},{}'.format(
-                        str(maskfile), img.width, img.height, self.imagesize[0], self.imagesize[1]))
-            return
-        img.loadImage()
-        m=numpy.array(img.imgdata,dtype=numpy.bool_)
-        if self.loglvl <= logging.INFO:
-            self.log.info('using mask from file {}, data type is {}, size is {}, {} cells are ignored'.format(
-                    str(maskfile), str(m.dtype), m.shape, numpy.count_nonzero(m)))
-        self.mask=m
+                self.log.info('using mask from file {}, data type is {}, size is {}, {} cells are ignored'.format(
+                        str(maskfile), str(m.dtype), m.shape, numpy.count_nonzero(m)))
+            self.mask=m
 
     def check(self, newimage):
         """
@@ -78,7 +86,8 @@ class changedImage():
         if self.mask is None:
             imin=newimage[0, :self.imagesize[1], :self.imagesize[0]]
         else:
-            imin=nam.masked_array(data=newimage[0, :self.imagesize[1], :self.imagesize[0]], mask=self.mask)
+            imin=nam.masked_array(data=newimage[self.vars['channel'].getValue('app'), :self.imagesize[1], :self.imagesize[0]],
+                    mask=self.mask, fill_value=0)
         if self.prevImage:
             self.workarray -= imin
             numpy.absolute(self.workarray, self.workarray)
@@ -87,9 +96,59 @@ class changedImage():
             found=self.hitcount >= self.vars['cellcount'].getValue('app')
         else:
             found=False
+        if found and not self.logdiffpalette is None:
+            self.diffToPng(self.workarray)
         numpy.copyto(self.workarray, imin)
         self.prevImage=True
         return found
+
+    def setDifflog(self):
+        if self.vars['logdetect'].getValue('app')=='OFF':
+            self.logdiffpalette=None
+            print('diff logging is OFF')
+            return
+        self.logdiffpalette=makepalette(self.vars['cellthreshold'].getValue('app'))
+        self.diffdir=pathlib.Path(self.vars['maskfolder'].getValue('app')).expanduser()/'detects'
+        self.diffdir.mkdir(parents=True, exist_ok=True)
+        print('diff logging is on with pal length', len( self.logdiffpalette))
+
+    def diffToPng(self, diffarray):
+        """
+        a simple routine to write the numpy difference array out as png file.
+        The values are all in range 0..255 so we'll use a simple palette to highlight things as follows:
+            values below cellthreshold * .5 are black
+            values then below cellthreshold *.75 are medium blue
+            values then below cellthreshold are bright blue
+            values then below cellthreshold * 1.25 are dark green
+            values then below cellthreshold * 2 are increasingly light green
+            values beyond that go from dark blue to bright blue as the value increases
+        """
+        pfile=self.diffdir/'d{:04d}.png'.format(self.vars['triggercount'].getValue('app'))
+        print('diff to file', str(pfile))
+        with pfile.open('wb') as pff:
+            arshape=diffarray.shape
+            pw = png.Writer(arshape[1], arshape[0], palette=self.logdiffpalette, bitdepth=8)
+            pw.write(pff, diffarray)    
+
+def fetchmask(actm, vars):
+    maskfile=vars['mask'].getFile()
+    if maskfile is None:
+        if actm.loglvl <= logging.INFO:
+            actm.log.info('no mask set')
+        return None
+    try:
+        img=pypnm.open(maskfile)
+    except ValueError as ve:
+        if actm.loglvl <= logging.CRITICAL:
+            actm.log.critical('no mask set, error opening file {}: {}'.format(str(maskfile), 'WHAT?'))
+        return None
+    if img.imgtype() != 'PBM':
+        if actm.loglvl <= logging.CRITICAL:
+            actm.log.critical('mask file {} is wrong type'.format(str(maskfile)))
+        return None
+    img.loadImage()
+    return img.imgdata
+
 
 class ciActivity(papps.appThreadAct):
     def __init__(self, inQ, outQ, analyser, analyserparams, **kwargs):
@@ -148,7 +207,7 @@ class mover(papps.appThreadAct):
                         'imagesize': imgsize,
                         'vars':self.vars})
         narsize=calcbuff(*imgsize)
-        self.numpyBuffs=[numpy.empty(narsize, dtype=numpy.uint8) for _ in range(2)]
+        self.numpyBuffs=[numpy.empty(narsize, dtype=numpy.uint8) for _ in range(4)]
         picam=self.parent.picam
         self.currentBuff=None
         self.procCount=0
@@ -164,8 +223,8 @@ class mover(papps.appThreadAct):
         return super().startedlogmsg()+' size {}, format {}, channel {}'.format(
                 self.vars['resize'].getValue('app'), 
                 self.vars['imgmode'].getValue('app'),
-                99)
-
+                self.vars['channel'].getValue('app'),
+                )
     def __iter__(self):
         return self
 
@@ -238,7 +297,7 @@ cpumovetable=(
             'name': 'maskfolder',
             'readersOn' : ('app', 'pers', 'html', 'webv'),
             'writersOn' : ('app', 'pers'),
-            'fallbackValue': '~/pootlecam/movemasks', 'clength':15,
+            'fallbackValue': '~/movemasks', 'clength':15,
             'label'     : 'image masks folder',
             'shelp'     : 'folder to hold image mask files'            
     }),
@@ -250,6 +309,12 @@ cpumovetable=(
             'label'     : 'use image mask',
             'shelp'     : 'enable / select image mask file'
     }),
+    (pchtml.htmlChoice, {
+            'name': 'logdetect', 'vlists': ('OFF', 'ON'), 'fallbackValue': 'OFF',    
+            'readersOn' : ('app', 'pers', 'html'),
+            'writersOn' : ('app', 'pers', 'user'),
+            'label'     : 'logdetect',
+            'shelp'     : 'When on, the difference images used to detect motion are saved.'}),
     (pchtml.htmlCyclicButton, {
             'name' : 'run',  'fallbackValue': 'start now', 'alist': ('start now', 'stop now '),
             'onChange'  : ('dynamicUpdate','user'),

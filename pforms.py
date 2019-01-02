@@ -403,11 +403,9 @@ class listVar(baseVar):
                 else:
                     assert vlen==len(l),'vlist lengths inconsistent - {} and {}' .format( vlen, len(l))
             self.viewlists=vlists
-            print('from maping', self.viewlists.keys())
         else:
             assert not isinstance(vlists, str) and hasattr(vlists,'__iter__'), 'vlist parameter is not a mapping or a list, it is a {}'.format(type(vlists).__name__)
             self.viewlists={v: vlists for v in app.allviews}
-            print(self.viewlists.keys())
         super().__init__(app=app, **kwargs)
 
     def _validValue(self, view, value):
@@ -610,6 +608,7 @@ class groupVar(baseVar):
         except KeyError:
             return {'resp': 500, 'rmsg': 'field {} from {} is not a child of field {}'.format(splitn[0], name, self.name)}
         if len(splitn)==1: # we've reached the basic field
+            print('calling webUpdateValue for field',target.name, 'of type', type(target).__name__)
             return target.webUpdateValue(value)
         else:              # there's another level to go
             return target.webUpdate(splitn[1], value)

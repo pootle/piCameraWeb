@@ -115,6 +115,19 @@ function smartNotify(ele, ename) {
     oReq.open("GET", "updateSetting?t="+ele.id+"&v="+ele.value);
     oReq.send();
 }
+
+function detstreamstart(ele) {
+    dele=document.getElementById("detstreamdiv");
+    dele.innerHTML='<img src="detstream.mjpg" id="detstreamimg"/>';
+    dele.style.display="block";
+}
+
+function detstreamstop(ele) {
+    var dele=document.getElementById("detstreamdiv");
+    dele.style.display="none";
+    dele.innerHTML=""
+}
+
 function livestreamstart(ele) {
     var dele=document.getElementById("livedivoff");
     dele.style.display="none";

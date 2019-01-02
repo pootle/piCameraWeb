@@ -42,8 +42,8 @@
        <div>
            <div class="aftertabby">
                <div class="eventable">
-                   <div class="evencell">A</div>
-                   <div class="evencell" onclick="editmaskstart(this)" title="click to edit mask for cpu mpvement">edit mask</div>
+                   <div class="evencell" onclick="detstreamstart" title="click to display cpu detect data" >show moves</div>
+                   <div id="editmaskbtn" class="evencell" onclick="editmaskstart(this)" title="click to edit mask for cpu mpvement">edit mask</div>
                    <div class="evencell" onclick="livestreamstop('imgel')" title="click to stop live view" >&#x2718</div>
                </div>
                <div>
@@ -53,6 +53,7 @@
                        <div id="livemaskdiv" style="display:none; position:absolute; top:0px; left:0px; width:100%; height:100%">
                           <canvas id="livemaskcanv"></canvas>
                        </div>
+                       <div id="detstreamdiv" style="display:none; position:absolute; top:0px; left:0px; width:100%; height:100%"></div>
                    </div>
                </div>
            </div>
