@@ -9,7 +9,6 @@ Each file / folder is represented as a dict with:
     inner: (only present for folders) a dict with key as the file / folder name, and value as one of these dicts
     count: (only present for folders) the number of files within this folder (and its children)
 """
-
 import pathlib
 from collections import OrderedDict
 
@@ -39,24 +38,25 @@ def prettyhtml(dt, indent=0):
     else:
         return r
 
-def pl(folder):
+def pl(folder, suffixes=None):
     if not isinstance(folder, pathlib.Path):
         folder=pathlib.Path(folder).expanduser()
-    nd=folddict(folder)
+    nd=folddict(folder, suffixes)
     return {folder.name: {'type': None, 'path': folder, 'inner': nd, 
                         'count':sum([v['count'] if v['type'] is None else 1 for v in nd.values() ]),
                         'size': folder.stat().st_size + sum(v['size'] for v in nd.values())}}
        
-def folddict(folder):
-    plx=folder.iterdir()
+def folddict(folder, suffixes=None):
     folds=[]
     files=[]
-    for pli in plx:
+    for pli in folder.iterdir():
         if not pli.name.startswith('.'):
             if pli.is_file():
-                files.append((pli.name,{'type': pli.suffix[1:], 'path': pli, 'size':pli.stat().st_size}))
+                sfx=pli.suffix[1:]
+                if suffixes is None or sfx in suffixes:
+                    files.append((pli.name,{'type': sfx, 'path': pli, 'size':pli.stat().st_size}))
             elif pli.is_dir():
-                nd=folddict(pli)
+                nd=folddict(pli, suffixes)
                 folds.append((pli.name, {'type': None, 'path': pli, 'inner': nd, 
                             'count':sum([v['count'] if v['type'] is None else 1 for v in nd.values() ]), 
                             'size': pli.stat().st_size + sum(v['size'] for v in nd.values())}))
