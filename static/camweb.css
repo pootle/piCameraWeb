@@ -255,3 +255,15 @@ td.helpbtn
 .clickable{
     cursor : pointer;
 }
+
+.dlink:link {
+    color: '#e0e0e0';
+}
+
+.dlink:visited {
+    color: '#e0e0ff';
+}
+
+.dlink:hover {
+    color: '#ffffff';
+}

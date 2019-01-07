@@ -447,9 +447,6 @@ class folderVar2(pforms.baseVar):
         """
         If the value is a file, returns a pathlib Path for the file, otherwise returns None
         """
-#        vidx=self._getVar()
-#        if vidx == 0:
-#            return None
         fpath=self.getValue('app')
         return fpath if fpath.is_file() else None        
 
@@ -505,7 +502,8 @@ class htmlFolderList(htmlgenBase, folderVar2):
     allows navigation and selection of files / folders on the server using an exploded (visible list)
     """
     entryfoldupd='''<tr class="clickable" onclick="baseSmartNotify(document.getElementById('{fid}'), '{path.name}')"><td>{path.name}</td><td>files:{count:3d}</td></tr>\n'''
-    entryfileupd='''<tr class="clickable" onclick="baseSmartNotify(document.getElementById('{fid}'), '{path.name}')"><td>{path.name}</td><td>size :{size:4d}</td></tr>\n'''
+#    entryfileupd='''<tr class="clickable" onclick="baseSmartNotify(document.getElementById('{fid}'), '{path.name}')"><td>{path.name}</td><td>size :{size:4d}</td></tr>\n'''
+    entryfileupd='''<tr><td><a class="dlink" href="updateSetting?t={fid}&v={path.name}">{path.name}</a></td><td><a class="dlink" href="updateSetting?t={fid}&v={path.name}">size :{size:4d}</a></td></tr>\n'''
     entryupupd  ='''<tr class="clickable" onclick="baseSmartNotify(document.getElementById('{fid}'), '..')"><td>..</td></tr>\n'''
 
     entryfoldop='<tr><td>{path.name}</td><td>files:{count:3d}</td></tr>\n'
@@ -538,7 +536,7 @@ class htmlFolderList(htmlgenBase, folderVar2):
         return {'resp':200, 'rdata': rdata}
 
     def _getHtmlOutputValue(self):
-        folderinfo=list(treefiles.pl(current if current.is_dir() else current.parent))[0]
+        folderinfo=list(treefiles.pl(current if current.is_dir() else current.parent),('mp4',))[0]
         bi=[]
         for name, info in folderinfo['inner'].items():
             if info['type'] is None:
@@ -550,7 +548,7 @@ class htmlFolderList(htmlgenBase, folderVar2):
 
     def _getHtmlInputValue(self):
         current = self._getVar()
-        folderinfo=list(treefiles.pl(current if current.is_dir() else current.parent).values())[0]
+        folderinfo=list(treefiles.pl(current if current.is_dir() else current.parent,('mp4',)).values())[0]
         bi=[]
         bi.append(self.entryupupd.format(fid=self.fhtmlid))
         for name, info in folderinfo['inner'].items():
