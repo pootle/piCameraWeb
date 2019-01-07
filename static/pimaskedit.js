@@ -14,6 +14,9 @@ var maskadd=true;
 
 var detectmask=null;
 
+var maskwidth=64;
+var maskheight=48;
+
 function editmaskstart(thisel) {
     if (thisel.innerHTML =='edit mask') {
         var oReq = new XMLHttpRequest();
@@ -79,8 +82,6 @@ function doeditmask() {
     var cheight= parseInt(cstyle.getPropertyValue('height'));
     maskcanvas.width = cwidth;
     maskcanvas.height = cheight;
-    var maskwidth=64;
-    var maskheight=48;
     maskcontext.lineWidth = 1;
     maskcontext.strokeStyle = '#00000080';
     var x;
