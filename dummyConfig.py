@@ -12,6 +12,7 @@ serverdef={
         '.py'  :('Content-Type', 'text/html; charset=utf-8'),   # python template files we assume return html for now
         '.jpg' :('Content-Type', 'image/jpeg'),
         '.png' :('Content-Type', 'image/png'),
+        '.mp4' :('Content-Type', 'video/mp4'),
         },
     'servefrom' : {         # paths static files relative to cwd
             'static'  : 'static',        # the default folder for entries with no 'foldname' key

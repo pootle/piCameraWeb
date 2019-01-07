@@ -6,7 +6,7 @@ mixins and extensions for pforms and piCamFields classes that support web page g
 import logging
 import pathlib
 
-import pforms, ptree
+import pforms, ptree, treefiles
 import piCamFields as pcf
 
 class htmlgenBase():
@@ -33,7 +33,7 @@ class htmlgenBase():
         generic setup for html / web based client with other handy bits
         """
         assert 'html' in readers and 'app' in readers and 'pers' in readers and 'webv' in readers
-        assert 'app' in writers and 'pers' in writers and 'user' in writers
+        assert 'app' in writers and 'pers' in writers#and 'user' in writers
         super().__init__(readers=readers, writers=writers, **kwargs)
         self.fhtmlid=self.getHierName()
         
@@ -260,14 +260,27 @@ class htmlFolder(htmlgenBase, pforms.folderVar):
         else:
             super()._setVar(val)
 
-class htmlFolderFile(htmlgenOption, pforms.listVar):
+class xhtmlFolder2(htmlgenBase, pforms.folderVar):
+    """
+    This displays a folder and allows basic navigation - typically from other fields.
+    
+    The root folder is stops navigation above this point
+    """
+    def __init__(self, root, readers=None, writers=None, **kwargs):
+        self.root=pathlib.Path(root).expanduser()
+        super().__init__(
+                readers=pforms.extendViews(readers, {'html': '_getHtmlValue', 'app': '_getAppValue', 'webv': '_getStrValue', 'pers': '_getStrValue'}),
+                writers=pforms.extendViews(writers, {'app': '_validValue', 'pers': '_validValue'}), #'user': '_validValue', 
+                readersOn= ('app', 'html', 'webv'),
+                writersOn= ('app', ),
+                **kwargs)
+
+class folderVar(pforms.listVar):
     """
     Allows user to select a file from within a folder, the folder name is specified in a related var.
     
     Note: Currently this var must follow the basefoldervar in setup.
     """
-    selecthtml = '''<select id="{f.fhtmlid:}" onchange="smartNotify(this, 'abcd')" >{optall:}</select>'''
-
     def __init__(self, name, parent, app, value, basefoldervar, valueView='app', **kwargs):
 #        super(ptree.treeob).__init__(name=name, parent=parent, app=app)
 # Truly horrible bit follows until I work out how to do it properly! this is the init code for a treeob in ptree
@@ -299,26 +312,6 @@ class htmlFolderFile(htmlgenOption, pforms.listVar):
             return None
         fpath=self.base/self.getValue('app')
         return fpath if fpath.is_file() else None        
-
-    def webUpdateValue(self, value):
-        """
-        This works in conjunction with the js function smartNotify to apply updates and return data to update the webpage appropriately
-        """
-        print('webUpdateValue in', self.name)
-        if self.setValue('user', value[0]):
-            rdata={'msg': '{} updated to {}'.format(self.name, str(self.getValue('app'))),
-                  }
-        else:
-            rdata={'msg': '{} unchanged at {}'.format(self.name, str(self.getValue('app'))),
-                  }
-        cval=self._getVar()
-        rdata['innerHTML']= ''.join([
-            self.optionhtml.format(
-                oval=optval, odisp=optval, sel=' selected' if optix==cval else '')
-                for optix, optval in enumerate(self.viewlists['html'])])
-        if self.loglvl <= logging.DEBUG:
-            self.log.debug('update for {} returns {}'.format(self.fhtmlid, rdata))
-        return {'resp':200, 'rdata': rdata}
 
     def setValue(self, view, value):
         """
@@ -363,7 +356,7 @@ class htmlFolderFile(htmlgenOption, pforms.listVar):
                     else:
                         self.valuePath=self.valuePath.parent/value
                         changed=True
-            print('htmlFolderFile.setValue checkpoint, changed is',changed)
+            print('folderVar.setValue checkpoint, changed is',changed)
             if changed:
                 self._setVar(newv)
                 flist=self._makelists()
@@ -397,6 +390,176 @@ class htmlFolderFile(htmlgenOption, pforms.listVar):
         flist.insert(0, '-off-')
         flist.insert(0, '..')
         return flist
+
+class htmlFolderFile(htmlgenOption, folderVar):
+    """
+    allows navigation and selection of files / folder on the server using a drop down list
+    """
+    selecthtml = '''<select id="{f.fhtmlid:}" onchange="smartNotify(this, 'abcd')" >{optall:}</select>'''
+    def webUpdateValue(self, value):
+        """
+        This works in conjunction with the js function smartNotify to apply updates and return data to update the webpage appropriately
+        """
+        print('webUpdateValue in', self.name)
+        if self.setValue('user', value[0]):
+            rdata={'msg': '{} updated to {}'.format(self.name, str(self.getValue('app'))),
+                  }
+        else:
+            rdata={'msg': '{} unchanged at {}'.format(self.name, str(self.getValue('app'))),
+                  }
+        cval=self._getVar()
+        rdata['innerHTML']= ''.join([
+            self.optionhtml.format(
+                oval=optval, odisp=optval, sel=' selected' if optix==cval else '')
+                for optix, optval in enumerate(self.viewlists['html'])])
+        if self.loglvl <= logging.DEBUG:
+            self.log.debug('update for {} returns {}'.format(self.fhtmlid, rdata))
+        return {'resp':200, 'rdata': rdata}
+
+
+
+class folderVar2(pforms.baseVar):
+    """
+    Allows user to navigate filestore, selecting a file or a folder.
+    """
+    def __init__(self, allowcreate=False, **kwargs):
+        self.allowcreate=allowcreate
+        super().__init__(**kwargs)
+
+    def setInitialValue(self, view, value, fallbackValue):
+        try:
+            v=pathlib.Path(value).expanduser()
+            self._setVar(v)
+        except:
+            v=None
+        if v is None:
+            v=pathlib.Path(fallbackValue).expanduser()
+        if v.exists():
+            if not (v.is_dir() or v.is_file()):
+                raise ValueError('path {} is not a file or folder'.format(str(v)))
+        elif self.allowcreate:
+            v.mkdir(parents=True)
+        else:
+            raise ValueError('path {} does not refer to an existing file or folder'.format(str(v)))
+        self._setVar(v)
+
+    def getFile(self):
+        """
+        If the value is a file, returns a pathlib Path for the file, otherwise returns None
+        """
+#        vidx=self._getVar()
+#        if vidx == 0:
+#            return None
+        fpath=self.getValue('app')
+        return fpath if fpath.is_file() else None        
+
+    def _validValue(self, view, value):
+        """
+        value: navigation from current folder:
+                    '.' no change
+                    '..' move to parent folder
+                    <str> move to subfolder or file <str> if <str> is not a file or folder within the current folder
+                            and allowcreate is True, then create a folder <str>
+        
+        returns : existing pathlib.Path (unchanged) or new pathlib.Path of the new folder or file
+        
+        raises  : ValueError if the provided value is invalid
+        """
+        if value=='.':
+            return self._getVar()
+        elif value=='..':
+            newf=self._getVar().parent
+            if not newf.is_dir():
+                raise ValueError('Cannot move to parent of ({})'.format(str(self._getVar())))
+        else:
+            oldv=self._getVar()
+            newf=oldv/value if oldv.is_dir() else oldv.parent/value
+            if not newf.exists():
+#                if self.allowcreate:
+#                    newf.mkdir()
+#                else:
+                    raise ValueError('Cannot find folder {} within folder {}'.format(newf.name, str(self._getVar())))
+        return newf
+
+    def _getAppValue(self, view):
+        return self._getVar()
+
+    def _getStrValue(self, view):
+        return str(self._getVar())
+
+    def _makelists(self):
+        v=self.valuePath
+        if v.exists():
+            if v.is_dir():
+               flist=[f.name for f in v.iterdir() if not f.name.startswith('.')]  
+            else:
+               w=v.parent
+               flist=[f.name for f in w.iterdir() if not f.name.startswith('.')]  
+        else:
+            flist=[]
+        flist.insert(0, '..')
+        return flist
+
+class htmlFolderList(htmlgenBase, folderVar2):
+    """
+    allows navigation and selection of files / folders on the server using an exploded (visible list)
+    """
+    entryfoldupd='''<tr class="clickable" onclick="baseSmartNotify(document.getElementById('{fid}'), '{path.name}')"><td>{path.name}</td><td>files:{count:3d}</td></tr>\n'''
+    entryfileupd='''<tr class="clickable" onclick="baseSmartNotify(document.getElementById('{fid}'), '{path.name}')"><td>{path.name}</td><td>size :{size:4d}</td></tr>\n'''
+    entryupupd  ='''<tr class="clickable" onclick="baseSmartNotify(document.getElementById('{fid}'), '..')"><td>..</td></tr>\n'''
+
+    entryfoldop='<tr><td>{path.name}</td><td>files:{count:3d}</td></tr>\n'
+    entryfileop='<tr><td>{path.name}</td><td>size :{size:4d}</td></tr>\n'
+
+    def __init__(self, readers=None, writers=None, **kwargs):
+        super().__init__(
+                readers=pforms.extendViews(readers, {'app': '_getAppValue', 'pers': '_getStrValue', 'html': '_getHtmlValue', 'webv': '_getStr Value'}),
+                writers=pforms.extendViews(writers, {'app': '_validValue', 'pers': '_validValue', 'user': '_validValue'}),
+                **kwargs
+        )
+
+    def webUpdateValue(self, value):
+        """
+        This works in conjunction with the js function smartNotify to apply updates and return data to update the webpage appropriately
+        """
+        print('webUpdateValue in', self.name, 'with', value)
+        update=False
+        try:
+            update= self.setValue('user', value[0])
+            rdata={'msg'   : '{} updated to {}'.format(self.name, str(self.getValue('app'))) if update else '{} unchanged at {}'.format(
+                            self.name, str(self.getValue('app'))),
+                  }
+        except ValueError:
+            rdata={'msg': '{} invalid value requested {}'.format(self.name, value[0]),}
+        if update:
+            rdata['innerHTML']=self._getHtmlInputValue()
+        if self.loglvl <= logging.DEBUG:
+            self.log.debug('update for {} returns {}'.format(self.fhtmlid, rdata))
+        return {'resp':200, 'rdata': rdata}
+
+    def _getHtmlOutputValue(self):
+        folderinfo=list(treefiles.pl(current if current.is_dir() else current.parent))[0]
+        bi=[]
+        for name, info in folderinfo['inner'].items():
+            if info['type'] is None:
+                bi.append(self.entryfoldop.format(fid=self.fhtmlid, **info))
+            else:
+                bi.append(self.entryfileop.format(fid=self.fhtmlid, **info))
+        output='<table><tr><td colspan="2"><h3>{head}</h3></td></tr>\n{flist}</table>'.format(head=str(self._getVar()), flist=''.join(bi))
+        return self.genFixedContent.format(f=self, sval=output)
+
+    def _getHtmlInputValue(self):
+        current = self._getVar()
+        folderinfo=list(treefiles.pl(current if current.is_dir() else current.parent).values())[0]
+        bi=[]
+        bi.append(self.entryupupd.format(fid=self.fhtmlid))
+        for name, info in folderinfo['inner'].items():
+            if info['type'] is None:
+                bi.append(self.entryfoldupd.format(fid=self.fhtmlid, **info))
+            else:
+                bi.append(self.entryfileupd.format(fid=self.fhtmlid, **info))
+        output='<table><tr><td colspan="2"><span>{head}</span></td></tr>\n{flist}</table>'.format(flist=''.join(bi), head=str(self._getVar()))
+        return self.genFixedContent.format(f=self, sval=output)
 
 class htmlFile(htmlgenOption, pforms.listVar):
     """

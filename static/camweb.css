@@ -251,3 +251,7 @@ td.helpbtn
     width: 640px;
     height: 480px;
 }
+
+.clickable{
+    cursor : pointer;
+}

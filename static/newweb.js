@@ -116,6 +116,25 @@ function smartNotify(ele, ename) {
     oReq.send();
 }
 
+function baseSmartNotify(ele, newvalue) {
+    var oReq = new XMLHttpRequest();
+    oReq.addEventListener("load", function () {
+        var newval=JSON.parse(this.response);
+        reportMessage(newval.msg);
+        if ("innerHTML" in newval) {
+            ele.innerHTML=newval.innerHTML;
+        }
+    });
+    oReq.addEventListener("error", function() {
+        reportMessage('request failed')
+    });
+    oReq.addEventListener("abort", function() {
+        reportMessage('request aborted')
+    });
+    oReq.open("GET", "updateSetting?t="+ele.id+"&v="+newvalue);
+    oReq.send();
+}
+
 function detstreamstart(ele) {
     dele=document.getElementById("detstreamdiv");
     dele.innerHTML='<img src="detstream.mjpg" id="detstreamimg"/>';

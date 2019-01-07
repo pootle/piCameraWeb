@@ -16,6 +16,7 @@ from piCamActMoveCPU import fetchmask
 from piCamActMoveGPIO import extmovetable
 from piCamActLiveStream import livestreamtable
 from piCamActTriggerVid import tripvidtable
+from piCamActListVid import vidlisttable
 
 class piCamWeb(pch.cameraManager):
     def __init__(self, webserver, loglvl=logging.INFO, **kwargs):
@@ -58,7 +59,7 @@ class piCamWeb(pch.cameraManager):
         if splitn[0]==self.name:
             return self.webUpdate(splitn[1],v)
         else:
-            return {'resp':500, 'rmsg': 'app name mismatch'}
+            return {'resp':500, 'rmsg': 'app name mismatch '+t[0]}
 
     def dynamicUpdate(self, var, view, oldValue, newValue):
         """
@@ -237,6 +238,7 @@ def testcam2(**kwargs):
         (htmlgentabbedgroups, {'varlist': cpumovetable, 'name': 'cpumove', 'label': 'cpu&nbsp;move test',}),
         (htmlgentabbedgroups, {'varlist': extmovetable, 'name': 'extmove', 'label': 'gpio&nbsp;move test',}),
         (htmlgentabbedgroups, {'varlist': tripvidtable, 'name': 'tripvid', 'label': 'tripped video',}),
+        (htmlgentabbedgroups, {'varlist': vidlisttable, 'name': 'listvid', 'label': 'list videos',}),
     )
     allsettings=(
         (htmlgencat, {'varlist': allsettingsgroups, 'name': 'settings',

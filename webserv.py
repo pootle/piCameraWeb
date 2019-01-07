@@ -4,18 +4,12 @@ import os, sys, time, argparse, pathlib, importlib, socket, errno, json, logging
 from urllib.parse import urlparse, parse_qs
 import http.server
 from socketserver import ThreadingMixIn
-import utils
+import utils, shutil
 
 def logException(log, text1, excInfo):
     if not log is None:
         exc_type, exc_value, exc_traceback=excInfo
         log.critical('exception {} in {}\n    value: {}\n{}'.format(str(exc_type), text1, str(exc_value), '\n'.join(traceback.format_tb(exc_traceback))))
-
-    
-#     exc_type, exc_value, exc_traceback = sys.exc_info()
-#        print( {'fail': 'exception', 'type':str(exc_type), 'value':str(exc_value)
-#                , 'trace':(''.join(traceback.format_tb(exc_traceback)) )
-#                , 'fromlink':0})
 
 appobpages=('appPage', 'vidstream', 'genstream', 'datafunc','download', 'upload')
         # pathdef pagetypes that refer to an object to be used
@@ -150,16 +144,73 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                 # result is a dict with:
                 #   resp: the response code - if 200 then good else bad
                 #   rdata: (only if resp==200) data (typically a dict) to json encode and return as the data
-                #   rmsg: (only if resp != 200) the message to return with the fail code
+                #   rmsg:  (only if resp != 200) the message to return with the fail code
+                #   dload: (optional if resp==200), if present then send special response rather than just the rdata 
                 if result['resp']==200:
-                    datats=json.dumps(result['rdata'])
-                    self.send_response(200)
-                    self.send_header('Content-Type', 'application/json; charset=utf-8')
-                    self.end_headers()
-                    self.wfile.write(datats.encode('utf-8'))
+                    if 'dload' in result:
+                        filep=result['dload']
+                        try:
+                            f = open(str(filep), 'rb')
+                        except OSError:
+                            self.send_error(404, "File not found")
+                            return None
+                        try:
+                            self.send_response(200)
+                            self.send_header(*serverconf['sfxlookup'][filep.suffix])
+                            self.send_header('Content-Disposition', 'attachment;filename=\"{}\"'.format(filep.name))
+                            fs = os.fstat(f.fileno())
+                            self.send_header("Content-Length", str(fs[6]))
+                            self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
+                            self.end_headers()
+                            print(' now copy the data')
+                            shutil.copyfileobj(f, self.wfile)
+                            print(' copy done')
+                            f.close()
+                        except:
+                            f.close()
+                            raise
+
+
+#                sfx=staticfilename.suffix
+#                self.send_response(200)
+#                self.send_header(*serverconf['sfxlookup'][sfx])
+
+
+
+#        ctype = self.guess_type(path)
+#        try:
+#            f = open(path, 'rb')
+#        except OSError:
+#            self.send_error(HTTPStatus.NOT_FOUND, "File not found")
+#            return None
+#        try:
+#            self.send_response(HTTPStatus.OK)
+#            self.send_header("Content-type", ctype)
+#            fs = os.fstat(f.fileno())
+#            self.send_header("Content-Length", str(fs[6]))
+#            self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
+#            self.end_headers()
+#            return f
+#        except:
+#            f.close()
+#            raise
+
+
+
+#                self.send_response(200)
+#                self.send_header('Content-Type', 'text/plain; charset=utf-8')
+#                self.send_header('Content-Disposition', 'attachment;filename=\"settings.txt\"')
+#                self.end_headers()
+#                self.wfile.write(resp.encode('utf-8'))
+#                        stuff
+                    else:
+                        datats=json.dumps(result['rdata'])
+                        self.send_response(200)
+                        self.send_header('Content-Type', 'application/json; charset=utf-8')
+                        self.end_headers()
+                        self.wfile.write(datats.encode('utf-8'))
                 else:
                     self.send_error(result['resp'], result['rmsg'])
-
             elif 'static'==pagetype:
                 staticfilename=self.server.p_filepath(presetfolder=pathdef.get('folder','static'), filepart=pathdef.get('pagefile', 'nopage'))
                 sfx=staticfilename.suffix
