@@ -150,19 +150,17 @@ function detstreamstop(ele) {
 function livestreamstart(ele) {
     var dele=document.getElementById("livedivoff");
     dele.style.display="none";
-    dele=document.getElementById("livestream");
-    dele.innerHTML='<img src="vstream.mjpg" id="livestreamimg"/>';
+    dele=document.getElementById("livestreamimg");
+    dele.src="vstream.mjpg";
     dele=document.getElementById("livedivon");
     dele.style.display="block";
 }
 
 function livestreamstop(ele) {
-    var dele=document.getElementById("livedivon");
+    var dele=document.getElementById("livestreamimg");
+    dele.src="nocam.png"
+    dele=document.getElementById("livedivon");
     dele.style.display="none";
-    dele=document.getElementById("livestream");
-    dele.innerHTML='nothing to see here.';
-    dele=document.getElementById("livestreamimg");
-    dele.src="nocam.png";
     dele=document.getElementById("livedivoff");
     dele.style.display="block";
 }
