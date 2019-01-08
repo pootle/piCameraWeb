@@ -257,13 +257,13 @@ td.helpbtn
 }
 
 .dlink:link {
-    color: '#e0e0e0';
+    color: #e0e0e0;
 }
 
 .dlink:visited {
-    color: '#e0e0ff';
+    color: #e0e0ff;
 }
 
 .dlink:hover {
-    color: '#ffffff';
+    color: #ffffff;
 }

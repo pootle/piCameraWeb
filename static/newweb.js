@@ -159,6 +159,8 @@ function livestreamstart(ele) {
 function livestreamstop(ele) {
     var dele=document.getElementById("livedivon");
     dele.style.display="none";
+    dele=document.getElementById("livestream");
+    dele.innerHTML='nothing to see here.';
     dele=document.getElementById("livestreamimg");
     dele.src="nocam.png";
     dele=document.getElementById("livedivoff");
