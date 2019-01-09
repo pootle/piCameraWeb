@@ -62,7 +62,9 @@ def folddict(folder, suffixes=None):
                             'size': pli.stat().st_size + sum(v['size'] for v in nd.values())}))
             else:
                 print('eeeeeeeeeeeeeek', str(pli))
-    x=OrderedDict(folds)
-    x.update(files)
+    flist=sorted(folds, key=lambda x: x[0])
+    x=OrderedDict(flist)
+    flist=sorted(files, key=lambda x: x[0], reverse=True)
+    x.update(flist)
     return x
     

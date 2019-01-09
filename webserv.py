@@ -550,7 +550,7 @@ if __name__ == '__main__':
     toplog.info(smsg)
     server = ThreadedHTTPServer(('',serverconf['port']),pywebhandler, mypyconf=serverconf)
     if args.interactive:
-        print('interactive mode')
+        print('interactive mode - start at server.mypyobjects')
         sthread=threading.Thread(target=server.serve_forever)
         sthread.start()
     else:
