@@ -32,10 +32,12 @@
                <tr>
                    {strmctrl:}
                    <td><a class="intlink" href="settings">download settings</a></td>
-                   <td><form id="uploadbanner" enctype="multipart/form-data" method="post" action="setSettings">
-                        <input id="fileupload" name="myfile" type="file" />
-                        <span title="upload settings" class="clicker clicker0" onclick="appUpload('fileupload')" >upload</span>
+                   <td><form>
+                        <label class='filefixerlbl'>load settings
+                        <input id="fileupload" name="myfile" type="file" onchange="appUpload('fileupload')" class="filefixerfile"/>
+                        </label>
                    </form></td>
+
                </tr>
            </table>
        </div>

@@ -65,10 +65,10 @@ class picamAttrMixin():
         if self.liveUpdate and not self.app.picam is None:
             setattr(self.app.picam, self.camAttr, super().getValue('app'))
 
-    def getValue(self, view):
-        if self.liveUpdate and not self.app.picam is None:
-            super().setValue('app', self.readRealCamera())
-        return super().getValue(view)
+#    def getValue(self, view):
+#        if self.liveUpdate and not self.app.picam is None:
+#            super().setValue('app', self.readRealCamera())
+#        return super().getValue(view)
 
     def readRealCamera(self):
         val=getattr(self.app.picam, self.camAttr)
@@ -84,7 +84,7 @@ class picamAttrMixin():
         aval=self.getValue('app')
         setattr(self.app.picam, self.camAttr, aval)
         if self.loglvl <= logging.INFO:
-            self.log.info('var {} value {} applied to camera'.format(self.name, aval))
+            self.log.info('var {} value {} applied to camera attribute {}'.format(self.name, aval, self.camAttr))
 
     def setupLogMsg(self):
         self.log.info('camera attribute ({}) {} set to {}.'.format(('not live' if self.app.picam is None else 'live'),

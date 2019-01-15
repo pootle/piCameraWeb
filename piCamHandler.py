@@ -73,6 +73,7 @@ class cameraManager(papps.appManager):
             desiredres=self['settings']['camsettings']['resolution'].getValue('app')
             self.picam=picamera.PiCamera(resolution=desiredres, framerate=self['settings']['camsettings']['framerate'].getValue('app'))
             for v in self['settings']['camsettings'].values():
+                print("check setting {}, apply is {}".format(v.name, v.liveUpdate))
                 if v.liveUpdate:
                     v._applyVar()
             self['camstatus'].setValue('app',self['settings']['camsettings']['resolution'].getValue('webv'))

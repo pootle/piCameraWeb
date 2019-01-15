@@ -71,6 +71,7 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
         pathchecked=self.breakdown('postpaths')
         if pathchecked[0]:
             pname, pathdef, pagetype,  targetob, ofunc, params = pathchecked[1:]
+            print(pname)
             th=self.headers['Content-Type']
             if th=='application/json':
                 dlength=int(self.headers['Content-Length'])
@@ -120,6 +121,7 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                 self.send_header('Content-Type', 'text/html; charset=utf-8')
                 self.end_headers()
                 self.wfile.write(b'ok')
+                print('call with', updata)
                 ofunc(updata)
         else:
             self.send_error(pathchecked[1],pathchecked[2])
@@ -170,39 +172,6 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                             f.close()
                             raise
 
-
-#                sfx=staticfilename.suffix
-#                self.send_response(200)
-#                self.send_header(*serverconf['sfxlookup'][sfx])
-
-
-
-#        ctype = self.guess_type(path)
-#        try:
-#            f = open(path, 'rb')
-#        except OSError:
-#            self.send_error(HTTPStatus.NOT_FOUND, "File not found")
-#            return None
-#        try:
-#            self.send_response(HTTPStatus.OK)
-#            self.send_header("Content-type", ctype)
-#            fs = os.fstat(f.fileno())
-#            self.send_header("Content-Length", str(fs[6]))
-#            self.send_header("Last-Modified", self.date_time_string(fs.st_mtime))
-#            self.end_headers()
-#            return f
-#        except:
-#            f.close()
-#            raise
-
-
-
-#                self.send_response(200)
-#                self.send_header('Content-Type', 'text/plain; charset=utf-8')
-#                self.send_header('Content-Disposition', 'attachment;filename=\"settings.txt\"')
-#                self.end_headers()
-#                self.wfile.write(resp.encode('utf-8'))
-#                        stuff
                     else:
                         datats=json.dumps(result['rdata'])
                         self.send_response(200)
