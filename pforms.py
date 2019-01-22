@@ -525,7 +525,13 @@ class groupVar(baseVar):
         for cls, ckwargs in varlist:
             childname=ckwargs['name'] if 'name' in ckwargs else cls.defaultName
             try:
-                newchild=cls(parent=self, app=self.app, value=None if value is None else value[childname] if childname in value else None, 
+                if value is None:
+                    withval=None
+                elif childname in value:
+                    withval=value[childname]
+                else:
+                    withval=None
+                newchild=cls(parent=self, app=self.app, value=withval, 
                                         valueView=kwargs['valueView'], **ckwargs)
             except Exception as e:
                 fkwargs={k:'children' if k=='varlist' else v for k,v in ckwargs.items()}

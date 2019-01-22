@@ -15,7 +15,7 @@ reduce the working size, and a framerate to suit.
 The different feeds then resize the image to an appropriate size for the particular task. As the GPU does the resizing it is
 very fast and low latency.
 """
-
+import pathlib
 import picamera, logging, time
 import pforms, papps
 from inspect import signature
@@ -58,6 +58,13 @@ class cameraManager(papps.appManager):
         else:
             self.startActivity(actname=var.name,
                 actclass=papps.appActivity if var.name=='test1' else papps.appThreadAct)
+
+    def saveDefaultSettings(self):
+        settingsfile=pathlib.Path('~/.picamsettings.txt').expanduser()
+        with settingsfile.open('w') as sf:
+            sf.write(self.getSettings('pers'))
+            return {'resp':200, 'rdata':{'msg':'defaults set'}}
+        return {'resp':502, 'rmsg':'eeek'}
 
     def fetchSettings(self):
         return self.getSettings('pers')

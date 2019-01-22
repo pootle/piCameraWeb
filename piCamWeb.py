@@ -9,6 +9,7 @@ import piCamFields as pcf
 import piCamHtml as pchtml
 import pforms
 import threading
+import json
 import pypnm
 
 from piCamActMoveCPU import cpumovetable
@@ -247,9 +248,14 @@ def testcam2(**kwargs):
                 'writersOn': ('app',),
         }),
     )
-    print("creating web camera handler")
+    print("creating web camera handler with kwargs", kwargs)
+    settingsfile=pathlib.Path('~/.picamsettings.txt').expanduser()
+    settings={}
+    if settingsfile.is_file():
+        with settingsfile.open() as sf:
+            settings=json.load(sf)
     cm=piCamWeb(
-           varlist=allsettings, value={}, valueView='app', 
+           varlist=allsettings, value=settings, valueView='app', 
            **kwargs
     )
     cmthread=threading.Thread(target=cm.runloop, name='camMan')

@@ -82,6 +82,8 @@ function reportMessage(msg) {
     rele.innerHTML=msg
 }
 
+
+
 function appNotify(ele, ename) {
     var oReq = new XMLHttpRequest();
     oReq.addEventListener("load", function () {
@@ -132,6 +134,22 @@ function baseSmartNotify(ele, newvalue) {
         reportMessage('request aborted')
     });
     oReq.open("GET", "updateSetting?t="+ele.id+"&v="+newvalue);
+    oReq.send();
+}
+
+function inpageAction(actvalue) {
+    var oReq = new XMLHttpRequest();
+    oReq.addEventListener("load", function () {
+        var newval=JSON.parse(this.response);
+        reportMessage(newval.msg);
+    });
+    oReq.addEventListener("error", function() {
+        reportMessage('request failed')
+    });
+    oReq.addEventListener("abort", function() {
+        reportMessage('request aborted')
+    });
+    oReq.open("GET", actvalue);
     oReq.send();
 }
 

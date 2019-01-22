@@ -31,13 +31,16 @@
                </tr>
                <tr>
                    {strmctrl:}
-                   <td><a class="intlink" href="settings">save settings</a></td>
+                   <td>
+                        <span class="intlink" href="setdefaults" title="use current settings as defaults on startup" onclick="inpageAction('setdefaults')">
+                            save defaults</span>
+                   </td>
+                   <td><a class="intlink" href="settings" title="save the current camera settings to a file">save settings</a></td>
                    <td><form>
-                        <label class='filefixerlbl'>apply settings
+                        <label class='filefixerlbl' title="apply settings previously saved">apply settings
                         <input id="fileupload" name="myfile" type="file" onchange="appUpload('fileupload')" class="filefixerfile"/>
                         </label>
                    </form></td>
-
                </tr>
            </table>
        </div>

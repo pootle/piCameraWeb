@@ -35,6 +35,7 @@ serverdef={
             'dynupdates'     : {'pagetype': 'dynupdates'},
             'fetchmask'      : {'pagetype': 'datafunc',    'obid': 'pootlecam', 'func': 'fetchmask'},
             'settings'       : {'pagetype': 'download',    'obid': 'pootlecam', 'func': 'fetchSettings'},
+            'setdefaults'    : {'pagetype': 'datafunc',    'obid': 'pootlecam', 'func': 'saveDefaultSettings'},
             },
     'postpaths': {          # paths to be handled by do_POST
             'setSettings'    : {'pagetype': 'upload',      'obid': 'pootlecam', 'func': 'putSettings'},
