@@ -216,16 +216,6 @@ streambuttons=(
             'name' : 'camerastop',  'fallbackValue': 'stop', 'alist': ('stop', ' stop '),
             'shelp': 'stop the camera - can only be stopped with no active streams',
     }),
-    (pchtml.htmlCyclicButton, {
-            'name' : 'test1',  'fallbackValue': 'fetch settings', 'alist': ('fetch settings', ' fetch settings '),
-            'shelp': 'do test 1',
-            'onChange'  : ('dynamicUpdate','user'),
-    }),
-    (pchtml.htmlCyclicButton, {
-            'name' : 'test2',  'fallbackValue': 'click', 'alist': ('click', ' click '),
-            'shelp': 'do test 2',
-            'onChange'  : ('dynamicUpdate','user'),
-    }),
 )
 
 def testcam2(**kwargs):
@@ -257,10 +247,12 @@ def testcam2(**kwargs):
                 'writersOn': ('app',),
         }),
     )
+    print("creating web camera handler")
     cm=piCamWeb(
            varlist=allsettings, value={}, valueView='app', 
            **kwargs
     )
     cmthread=threading.Thread(target=cm.runloop, name='camMan')
     cmthread.start()
+    print("camera web handler thread started")
     return cm#, cmthread

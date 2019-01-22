@@ -40,7 +40,7 @@ function appUpload(inp) {
     var req = new XMLHttpRequest();
     req.open("POST", 'setSettings');
     req.addEventListener("load", function () {
-        reportMessage(this.responseText)
+        window.location="";
     });
     req.addEventListener("error", function() {
         reportMessage('request failed')
