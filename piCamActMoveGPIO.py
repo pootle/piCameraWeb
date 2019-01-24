@@ -2,7 +2,7 @@
 """
 module to pick up gpio input for movement detection (e.g. PIR sensor)
 """
-import pigpio
+import time, pigpio
 import logging
 
 import papps
@@ -17,10 +17,10 @@ class externalmover(papps.appThreadAct):
         self.vars['lasttrigger'].setValue('app', 0)
 
     def startedlogmsg(self):
-        return 'external gpio trigger on gpio {} starts'.format(self.vars['triggerpin'].getValue('expo'))
+        return 'external gpio trigger on gpio {} starts'.format(self.vars['triggerpin'].getValue('pers'))
 
     def endedlogmsg(self):
-        return 'external gpio trigger on gpio {} ends, {} triggers'.format(self.vars['triggerpin'].getValue('expo'), 
+        return 'external gpio trigger on gpio {} ends, {} triggers'.format(self.vars['triggerpin'].getValue('pers'), 
                                                                            self.vars['triggercount'].getValue('app'))
 
     def reportstatetime(self, level):
@@ -30,7 +30,7 @@ class externalmover(papps.appThreadAct):
                 self.log.debug('first transition is to {}'.format('high' if level == 1 else 'low'))
         else:
             elapsed=tnow-self.lastedgetime
-            if self.logging <= logging.DEBUG:
+            if self.loglvl <= logging.DEBUG:
                 self.log.debug('{} level lasted {:1.2f} seconds'.format('high' if level==0 else 'low', elapsed))
         self.lastedgetime=tnow
 
