@@ -185,9 +185,10 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                 sfx=staticfilename.suffix
                 self.send_response(200)
                 self.send_header(*serverconf['sfxlookup'][sfx])
-                self.end_headers()
                 with staticfilename.open('rb') as sfile:
                     cont=sfile.read()
+                    self.send_header('Content-Length', len(cont))
+                    self.end_headers()
                     self.wfile.write(cont)
                 if 'log' in pathdef:
                     if self.server.loglvl <= logging.DEBUG:
@@ -199,8 +200,10 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                     cont, psuffix = ofunc(**params)
                     self.send_response(200)
                     self.send_header(*serverconf['sfxlookup'][psuffix])
+                    econt=cont.encode('utf-8')
+                    self.send_header('Content-Length', len(econt))
                     self.end_headers()
-                    self.wfile.write(cont.encode())
+                    self.wfile.write(econt)
                     if 'log' in pathdef:
                         if self.server.loglvl <= logging.DEBUG:
                             self.server.log.debug('pywebhandler.do_GET appPage called {} length {} sent in response to {} using headers {} using.'.format(
@@ -210,28 +213,32 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                     self.send_error(500,'do get datafunc call crashed')
             elif 'vidstream'==pagetype:
                 output=ofunc()
-                self.send_response(200)
-                self.send_header('Age', 0)
-                self.send_header('Cache-Control', 'no-cache, private')
-                self.send_header('Pragma', 'no-cache')
-                self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
-                self.end_headers()
-                try:
-                    while True:
-                        with output.condition:
-                            output.condition.wait()
-                            frame = output.frame
-                        self.wfile.write(b'--FRAME\r\n')
-                        self.send_header('Content-Type', 'image/jpeg')
-                        self.send_header('Content-Length', len(frame))
-                        self.end_headers()
-                        self.wfile.write(frame)
-                        self.wfile.write(b'\r\n')
-                except BrokenPipeError:
-                    pass
-                except Exception as e:
-                    logException(self.server.log, 'Removed streaming client %s: %s' % (self.client_address, str(e)), sys.exc_info())
-                targetob.stopLiveStream()
+                if output is None:
+                    self.send_error(500,'unable to start camera stream')
+                else:
+                    self.send_response(200)
+                    self.send_header('Age', 0)
+                    self.send_header('Cache-Control', 'no-cache, private')
+                    self.send_header('Pragma', 'no-cache')
+                    self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
+                    self.end_headers()
+                    try:
+                        while True:
+                            with output.condition:
+                                output.condition.wait()
+                                frame = output.frame
+                            if len(frame) > 0:
+                                self.wfile.write(b'--FRAME\r\n')
+                                self.send_header('Content-Type', 'image/jpeg')
+                                self.send_header('Content-Length', len(frame))
+                                self.end_headers()
+                                self.wfile.write(frame)
+                                self.wfile.write(b'\r\n')
+                    except BrokenPipeError:
+                        pass
+                    except Exception as e:
+                        logException(self.server.log, 'Removed streaming client %s: %s' % (self.client_address, str(e)), sys.exc_info())
+                    targetob.stopLiveStream()
 
             elif 'genstream'==pagetype:
                 if 'func' in pathdef:

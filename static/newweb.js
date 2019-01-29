@@ -165,22 +165,13 @@ function detstreamstop(ele) {
     dele.innerHTML=""
 }
 
-function livestreamstart(ele) {
-    var dele=document.getElementById("livedivoff");
-    dele.style.display="none";
-    dele=document.getElementById("livestreamimg");
-    dele.src="vstream.mjpg";
-    dele=document.getElementById("livedivon");
-    dele.style.display="block";
-}
-
-function livestreamstop(ele) {
-    var dele=document.getElementById("livestreamimg");
-    dele.src="nocam.png"
-    dele=document.getElementById("livedivon");
-    dele.style.display="none";
-    dele=document.getElementById("livedivoff");
-    dele.style.display="block";
+function livestreamsstop() {
+    var imele=document.getElementById("livestreamimg");
+    if (imele.src.endsWith("nocam.png")                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ) {
+        imele.src="vstream.mjpg"
+    } else {
+        imele.src="nocam.png"
+    }
 }
 
 function clickNotify(ele) {

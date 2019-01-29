@@ -136,6 +136,13 @@ td.helpbtn
     text-align: center;    
 }
 
+.vidstream {
+    position: relative;
+    display: inline-block;
+    width: 640px;
+    height:480px;
+}
+
 .clicker {
     width  :75%;
     text-align: center;   

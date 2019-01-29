@@ -49,29 +49,23 @@
                <div class="eventable">
                    <div class="evencell" onclick="detstreamstart" title="click to display cpu detect data" >show moves</div>
                    <div id="editmaskbtn" class="evencell" onclick="editmaskstart(this)" title="click to edit mask for cpu mpvement">edit mask</div>
-                   <div class="evencell" onclick="livestreamstop('imgel')" title="click to stop live view" >&#x2718</div>
+                   <div class="evencell" onclick="livestreamsstop()" title="click to start / stop live view" >&#x2718</div>
                </div>
-               <div>
-                   <div id="livedivoff" >
-                        <img src="nocam.png" width="640" height="480" title="click here for live view" onclick="livestreamstart('imgel')"/>
-                   </div>
-                   <div id="livedivon" style="display:none; width:640px; height:480px" >
-                       <div id="livestream">
-                            <img src="nocam.png" id="livestreamimg" alt="live video feed here"/>
-                       </div>
-                       <div id="livemaskdiv" style="display:none; position:absolute; top:0px; left:0px; width:100%; height:100%">
+               <div class="vidstream">
+                    <img id="livestreamimg" src="nocam.png" width="640" height="480" style="z-index:1;"/>
+                    <div id="livemaskdiv" style="display:none; position:absolute; top:0px; left:0px; width:100%; height:100%; z-index:2;">
                           <canvas id="livemaskcanv"></canvas>
-                       </div>
-                       <div id="detstreamdiv" style="display:none; position:absolute; top:0px; left:0px; width:100%; height:100%">
-                       </div>
+                    </div>
+                   <div id="detstreamdiv" style="display:none; position:absolute; top:0px; left:0px; width:100%; height:100%; z-index:3;">
                    </div>
-               </div>
            </div>
+           </div>
+               </div>
            <div class="tabwrap">
                <div class="tabby">
-              {settings:}
+               {settings:}
                </div>
            </div>
        </div>
    </body>
-</html>'
+</html>
