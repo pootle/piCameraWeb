@@ -25,7 +25,6 @@ serverdef={
             'pipyscripts.js' : {'pagetype': 'static',      'pagefile': 'pipyscripts.js', 'log':0},
             'pimaskedit.js'  : {'pagetype': 'static',      'pagefile': 'pimaskedit.js'},
             'newweb.js'      : {'pagetype': 'static',      'pagefile': 'newweb.js'},
-            'test.html'      : {'pagetype': 'static',      'pagefile': 'testmain.html'},
             'favicon.ico'    : {'pagetype': 'static',      'pagefile': 'rasppi.ico', 'log':0},
             'streamstats'    : {'pagetype': 'genstream',   'obid': 'pootlecam', 'func': 'streamstates', 'period': 5.45},
             'pistatus'       : {'pagetype': 'genstream',   'obid': 'pistat', 'period': 1.9},
