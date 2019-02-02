@@ -94,7 +94,7 @@ extmovetable=(
     (pchtml.htmlInt,        {
             'name'      : 'triggercount', 'fallbackValue': 0,
             'readersOn' : ('html', 'app', 'webv'),
-            'writersOn' : ('app',),
+            'writersOn' : ('app', 'pers'),
             'onChange'  : ('dynamicUpdate','app'),
             'label'     : 'triggers',
             'shelp'     : 'number of triggers this session'}),

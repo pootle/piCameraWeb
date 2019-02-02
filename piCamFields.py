@@ -65,11 +65,6 @@ class picamAttrMixin():
         if self.liveUpdate and not self.app.picam is None:
             setattr(self.app.picam, self.camAttr, super().getValue('app'))
 
-#    def getValue(self, view):
-#        if self.liveUpdate and not self.app.picam is None:
-#            super().setValue('app', self.readRealCamera())
-#        return super().getValue(view)
-
     def readRealCamera(self):
         val=getattr(self.app.picam, self.camAttr)
         return self._camconvertReadVal(val)
@@ -267,10 +262,13 @@ expCompDisplays=list([l[1] for l in expCompList])
 class camExpoComp(picamAttrMixin, pforms.listVar):
     defaultName='expComp'
 
-    def __init__(self, app, readers, writers, **kwargs):
+    def __init__(self, app, readers, writers, value, valueView, **kwargs):
         vlists={k: expCompCamValues if k=='app' else expCompDisplays for k in app.allviews}
-        super().__init__(fallbackValue=0, app=app,
+        print("========exposure compensation using value", value, " with view ", valueView)
+        super().__init__(fallbackValue='0', app=app,
                 vlists=vlists,
+                value=value,
+                valueView=valueView,
                 readers=pforms.extendViews(readers, {'app':'_getValue', 'pers': '_getValue'}),
                 writers=pforms.extendViews(writers, {'app': '_validValue', 'pers': '_validValue'}),
                 camAttr='exposure_compensation', liveUpdate=True,

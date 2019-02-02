@@ -189,12 +189,12 @@ class htmlCamExpoComp(pchtml.htmlgenOption, pcf.camExpoComp):
 camsettingstable=(
     (htmlCamResolution, {}),
     (htmlCamFramerate, {}),
-    (htmlCamRotation, {'loglvl':logging.DEBUG-1}),
+    (htmlCamRotation, {}),
     (htmlCamBrightness, {}),
     (htmlCamContrast, {}),
     (htmlCamAwb_mode, {}),
     (htmlCamExpMode, {}),
-    (htmlCamExpoComp, {}),
+    (htmlCamExpoComp, {'loglvl':logging.DEBUG}),
  )
 
 camsettingvalues={ # default values picked up from camera attribute classes
@@ -245,7 +245,7 @@ def testcam2(**kwargs):
         (pchtml.htmlPlainString, {'name': 'camstatus', 'fallbackValue': 'off',
                 'onChange' : ('dynamicUpdate','app'),
                 'readersOn': ('app', 'html','webv'),
-                'writersOn': ('app',),
+                'writersOn': ('app', 'pers'),
         }),
     )
     print("creating web camera handler with kwargs", kwargs)
@@ -255,7 +255,7 @@ def testcam2(**kwargs):
         with settingsfile.open() as sf:
             settings=json.load(sf)
     cm=piCamWeb(
-           varlist=allsettings, value=settings, valueView='app', 
+           varlist=allsettings, value=settings, valueView='pers', 
            **kwargs
     )
     cmthread=threading.Thread(target=cm.runloop, name='camMan')

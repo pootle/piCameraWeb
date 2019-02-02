@@ -167,7 +167,7 @@ class htmlTimestamp(htmlgenBase, pforms.timeVar):
     timestamp fields to record the time something significant changed. This only supports app update and
     typically then updates the web browser on the fly.
     """
-    def __init__(self, readers=None, writers=None, readersOn=('app', 'html', 'webv'), writersOn=('app',), **kwargs):
+    def __init__(self, readers=None, writers=None, readersOn=('app', 'html', 'webv'), writersOn=('app', 'pers'), **kwargs):
         super().__init__(
                 readers=pforms.extendViews(readers, {'html': '_getHtmlValue', 'app': '_getCValue', 'webv': '_getSValue', 'pers': '_getCValue'}),
                 readersOn=readersOn,
@@ -190,7 +190,7 @@ HTMLSTATUSSTRING={
     'label'     : 'state',
     'shelp'     : 'current status of this activity',
     'readersOn' : ('html', 'webv'),
-    'writersOn' : ('app',)}
+    'writersOn' : ('app', 'pers')}
 
 class htmlPlainString(htmlgenPlainText, pforms.textVar):
     pass
@@ -218,7 +218,7 @@ class htmlCyclicButton(htmlgenBase, pforms.listVar):
             readers={'html': '_getHtmlValue', 'app':'_getValue', 'pers': '_getValue', 'webv': '_getValue'},
             readersOn=('app', 'html', 'webv'),
             writers={'user': '_validValue', 'app': '_validValue', 'pers': '_validValue'},
-            writersOn=('app', 'user'),
+            writersOn=('app', 'user', 'pers'),
             **kwargs):
         super().__init__(readers=readers, readersOn=readersOn, writers=writers, writersOn=writersOn, app=app,
                 vlists={v: alist for v in app.allviews}, **kwargs)
