@@ -82,12 +82,15 @@ class appActivity():
     def tidyclose(self):
         return True
 
+    def onActExit(self):
+        pass
+
 class appThreadAct(appActivity):
     """
     A class for activities that need to run in their own thread.
     
     While similar to a simple appActivity, this variant starts a new execution thread that the activity can use in any
-    appropriate manner. Such classes should override the member function run, using this class's run as a model. The time between
+    appropriate manner. Such classes should override the member function innerrun, using this class's innerrun as a model. The time between
     checking for self.requstate should preferably not exceed 1 second.
     """
     def __init__(self, **kwargs):
@@ -105,13 +108,22 @@ class appThreadAct(appActivity):
     def start(self):
         self.actThread.start()
 
-    def run(self):
+    def innerrun():
         self.startSetup()
         while self.requstate != 'stop':
             time.sleep(1)
         self.updateState('complete')
         if self.loglvl <= logging.INFO:
             self.log.info(self.endedlogmsg())
+
+    def run(self):
+        try:
+            self.innerrun()
+        except:
+            exc_type, exc_value, exc_traceback=excInfo
+            log.critical('exception {} in {}\n    value: {}\n{}'.format(str(exc_type), text1, str(exc_value), 
+                    '\n'.join(traceback.format_tb(exc_traceback))))
+        self.onActExit()
 
     def requestFinish(self):
         if self.loglvl <= logging.INFO:
@@ -120,7 +132,7 @@ class appThreadAct(appActivity):
 
     def tidyclose(self):
         self.actThread.join(timeout=.2)
-        return not self.actThread.is_alive()
+        return not self.actThread.isAlive()
 
 class appManager(pforms.appVar):
     """
@@ -167,6 +179,7 @@ class appManager(pforms.appVar):
                         vars=self['settings'].get(actname) if vars is None else vars,   # there may be no actname in settings
                         **actparams)
         self.activities[actname].start()
+        return self.activities[actname]
 
     def checkActivities(self):
         """
@@ -182,9 +195,17 @@ class appManager(pforms.appVar):
             self.activities.pop(act.name)
             gone=act.tidyclose()
             if gone:
+                act.onActExit()
                 if self.loglvl <= logging.INFO: # use app's loglvl to report activity start and stop
                     self.log.info('Activity {} has gone'.format(act.name))
             else:
                 if self.loglvl <= logging.INFO: # use app's loglvl to report activity start and stop
                     self.log.info('Activity {} shutdown pending'.format(act.name))
                 self.activities[act.name]=act
+        for act in self.activities.values():  # also check threaded activities to see if it has died - the ultimate backstop?
+            actThread=getattr(act,'actThread', None)
+            if not actThread is None:
+                if not actThread.isAlive():
+                    print("papps.checkActivities dead activity {} detected".format(act.name))
+                
+            

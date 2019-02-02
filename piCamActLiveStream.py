@@ -6,12 +6,9 @@ import io, threading
 
 import papps
 import piCamHtml as pchtml
+from piCamSplitter import camSplitterAct
 
-class liveVidStream(papps.appActivity):
-    def __init__(self, splitterport, **kwargs):
-        self.sPort=splitterport
-        super().__init__(**kwargs)
-
+class liveVidStream(camSplitterAct, papps.appActivity):
     def start(self):
         self.startDeclare()
         self.streambuff=StreamingOutput()
@@ -23,7 +20,6 @@ class liveVidStream(papps.appActivity):
     def requestFinish(self):
         self.requstate='stop'
         self.parent.picam.stop_recording(splitter_port=self.sPort)
-        self.parent.releaseSplitterPort(self)
         self.endDeclare()
 
 class StreamingOutput():

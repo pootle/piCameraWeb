@@ -9,18 +9,17 @@ from subprocess import Popen, PIPE
 
 import papps
 import piCamHtml as pchtml
+from piCamSplitter import camSplitterAct
 
-class triggeredVideo(papps.appThreadAct):
+class triggeredVideo(camSplitterAct, papps.appThreadAct):
     """
     This class runs a permanent video stream to a circular buffer. When triggered it then writes a video file with the previous
     few seconds followed by the video of the following time the trigger is active.
     
     Trigger recording by calling the member function trigger from any thread
     """
-    def __init__(self, splitterport, **kwargs):
-        self.sPort=splitterport
+    def __init__(self, **kwargs):
         self.lasttrigger=0
-#        self.summaryState='waiting'
         super().__init__(**kwargs)
         self.vars['triggercount'].setValue('app',0)
 
@@ -31,14 +30,10 @@ class triggeredVideo(papps.appThreadAct):
     def endedlogmsg(self):
         return 'triggeredVideo ends, {} video files recorded'.format(str(self.vars['triggercount'].getValue('app')))
 
-    def tidyclose(self):
-        self.parent.releaseSplitterPort(self)
-        super().tidyclose()
-
     def trigger(self):
         self.lasttrigger=time.time()
 
-    def run(self):
+    def innerrun(self):
         self.startDeclare()
         picam=self.parent.picam
         rs=self.vars['resize'].getValue('app')

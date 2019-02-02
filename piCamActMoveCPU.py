@@ -11,6 +11,7 @@ import png, pathlib
 import papps
 import piCamHtml as pchtml
 import piCamFields as pcf
+from piCamSplitter import camSplitterAct
 import pypnm
 
 def makepalette(thresh):
@@ -181,22 +182,14 @@ def calcbuff(width, height):
     pass"""
     return (3, int((height+15)/16)*16, int((width+31)/32)*32)
 
-class mover(papps.appThreadAct):
+class mover(camSplitterAct,papps.appThreadAct):
     """
     When movement detected, variables 'triggercount' and 'lasttrigger' are updated.
     
     The actual analysis is run in a separate thread. Since most of the work is in numpy, this thread does not block
     other python threads from running.
     """
-    def __init__(self, splitterport, **kwargs):
-        self.sPort=splitterport
-        super().__init__(**kwargs)
-
-    def tidyclose(self):
-        self.parent.releaseSplitterPort(self)
-        super().tidyclose()
-
-    def run(self):
+    def innerrun(self):
         imgsize=self.vars['resize'].getValue('app')
         self.checkQueue=queue.Queue()
         self.returnQueue=queue.Queue()
@@ -225,6 +218,7 @@ class mover(papps.appThreadAct):
                 self.vars['imgmode'].getValue('app'),
                 self.vars['channel'].getValue('app'),
                 )
+
     def __iter__(self):
         return self
 

@@ -19,6 +19,7 @@ import pathlib
 import picamera, logging, time
 import pforms, papps
 from inspect import signature
+from threading import Lock as thrlock
 
 from piCamActMoveCPU import mover as cpumover
 from piCamActMoveGPIO import externalmover as externalmover
@@ -36,7 +37,9 @@ class cameraManager(papps.appManager):
     """
     def __init__(self, **kwargs):
         self.picam=None
+        self.cameraTimeout=None
         self.camStreams=[None, None, None, None]
+        self.camlock=thrlock()          # allocate a lock to use for multithreading data protection
         with picamera.PiCamera() as tempcam:
             self.camType=tempcam.revision
             self.picam=tempcam
@@ -48,8 +51,6 @@ class cameraManager(papps.appManager):
         self['settings']['extmove']['run'].addNotify(self.extmotiondetect, 'user')
         self['settings']['extmove']['lasttrigger'].addNotify(self.movedetected, 'app')
         self['strmctrl']['camerastop'].addNotify(self.safeStopCamera,'user')
-#        self['strmctrl']['test1'].addNotify(self.dlsettings,'html')
-#        self['strmctrl']['test2'].addNotify(self.dotest,'html')
 
     def dotest(self, var, view=None, oldValue=None, newValue=None):
         print('you pressed', var.name)
@@ -108,6 +109,9 @@ class cameraManager(papps.appManager):
         while self.running:
             time.sleep(2)
             self.checkActivities()
+            if not self.cameraTimeout is None and time.time() > self.cameraTimeout:
+                self.stopCamera()
+                self.cameraTimeout=None
         if self.loglvl <= logging.INFO:
             self.log.info("cameraManager runloop closing down")
         pending=0
@@ -123,44 +127,51 @@ class cameraManager(papps.appManager):
         if self.loglvl <= logging.INFO:
             self.log.info("cameraManager runloop all streams closed, time to exit.")
 
-    def getSplitterPort(self):
-        try:
-            useport=self.camStreams.index(None)
-            self.camStreams[useport]=0
-        except:
-            return None
-        if self.picam is None:
-            self.startCamera()
-        if self.loglvl <= logging.DEBUG:
-            self.log.debug('allocated port {}'.format(useport))
-        return useport
-
-    def setSplitterPort(self, port, activity):
-        if self.camStreams[port] is 0:
-            self.camStreams[port]=activity
+    def _releaseSplitterPort(self, activity, sPort):
+        if self.camStreams[sPort]==activity:
+            self.camStreams[sPort]=None
+            alldone=True
+            for act in self.camStreams:
+                if not act is None:
+                    alldone=False
+            self.cameraTimeout=time.time()+10 if alldone else None
             if self.loglvl <= logging.DEBUG:
-                self.log.debug('sets port {} used by {}'.format(port,activity.name))
-        else:
-            raise RuntimeError('splitter port setup error')
-
-    def releaseSplitterPort(self, activity):
-        if self.camStreams[activity.sPort]==activity:
-            self.camStreams[activity.sPort]=None
-            if self.loglvl <= logging.DEBUG:
-                self.log.debug('releases port {} - previously used by {}'.format(activity.sPort, activity.name))
+                self.log.debug('releases port {} - previously used by {}'.format(sPort, activity.name))
         else:
             raise RuntimeError('release splitter port inconsistent info for activity {}'.format(activity.name))
 
     def startPortActivity(self, actname, actclass):
-        sport=self.getSplitterPort()
-        if sport is None:
+        """
+        Attempts to start an activity that requires a camera port.
+        
+        First starts the camera if it is not running.
+        
+        Then (under semaphore) tries to allocate a splitter port - unallocated ports are set to None. 
+        This sets the port table entry to zero
+        """
+        if self.picam is None:
+            self.startCamera()
+        self.camlock.acquire()
+        try:
+            sport=self.camStreams.index(None)
+            self.camStreams[sport]=0
+            self.camlock.release()
+        except:
+            self.camlock.release()
             if self.loglvl <= logging.WARN:
                 self.log.warn("unable to start {} - no free splitter ports".format(actname))
             return None
-        self.startActivity(actname=actname, actclass=actclass, splitterport=sport, loglvl=logging.DEBUG)
-        act=self.activities[actname]
-        self.setSplitterPort(sport, act)
-        return act
+        if self.loglvl <= logging.DEBUG:
+            self.log.debug('allocated port {} for activity {}'.format(sport, actname))
+        try:
+            newact = self.startActivity(actname=actname, actclass=actclass, splitterport=sport, loglvl=logging.DEBUG)
+        except:
+            self.camStreams[sport]=None
+            raise
+        self.camStreams[sport]=newact
+        if self.loglvl <= logging.DEBUG:
+            self.log.debug('sets port {} used by {}'.format(sport,actname))
+        return newact
 
     def startDetectStream(self):
         return None
@@ -205,7 +216,6 @@ class cameraManager(papps.appManager):
     def videotrigger(self, var=None, view=None, oldValue=None, newValue=None):
         if 'tripvid' in self.activities:
             self.stopCameraActivity('tripvid')
-#?            act.trigger()
         else:
             self.startCameraActivity('tripvid', triggeredVideo, True)
 
@@ -230,12 +240,15 @@ class cameraManager(papps.appManager):
             print('piCamHandler: movedetected -vid not active')
 
     def safeStopCamera(self, var=None, view=None, oldValue=None, newValue=None):
-        if len(self.activities) == 0:
-            self.stopCamera()
-            if self.loglvl <= logging.INFO:
-                self.log.info('Camera stopped')
-        elif self.loglvl <= logging.INFO:
-            self.log.info('Cannot stop camera - active streams')
+        actives=[]
+        if not self.picam is None:
+            for portact in self.camStreams:
+                if not portact is None and not portact is 0:
+                    actives.append(portact.name)
+            if len(actives) == 0:
+                self.stopCamera()
+            elif self.loglvl <= logging.INFO:
+                self.log.info('Cannot stop camera - active streams {}'.format(str(actives)))
 
     def setupLogMsg(self):
         print("its'a", self.camType)
