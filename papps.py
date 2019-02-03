@@ -153,7 +153,9 @@ class appManager(pforms.appVar):
         """
         close just sets the flag to show we no longer want to run. the run loop should cleanly close everything down.
         """
-        self.running=False
+        if 'alarmact' in self.activities:
+            self.activities['alarmact'].requestFinish()
+        self.running=False        
 
     def startActivity(self, actname, actclass, vars=None, **actparams):
         """
@@ -181,6 +183,13 @@ class appManager(pforms.appVar):
         self.activities[actname].start()
         return self.activities[actname]
 
+    def addAlarm(self, **kwargs):
+        if 'alarmact' in self.activities:
+            aact=self.activities['alarmact']
+        else:
+            aact=self.startActivity('alarmact', alarmAct, vars={})
+        aact.addAlarm(**kwargs)
+
     def checkActivities(self):
         """
         This function should be called periodically (say every second or 2) to check if any activities have terminated
@@ -207,5 +216,45 @@ class appManager(pforms.appVar):
             if not actThread is None:
                 if not actThread.isAlive():
                     print("papps.checkActivities dead activity {} detected".format(act.name))
-                
-            
+
+class alarmAct(appThreadAct):
+    """
+    A threaded activity that provides a runafter / runat facility for delayed action or slow timer type functionality.
+    
+    All alarms are one shot, the alarm needs to recreate itself for periodic alarms   
+    """
+    def __init__(self, **kwargs):
+        self.timedacts=[]
+        self.datasem=threading.Lock()
+        super().__init__(**kwargs)
+
+    def addAlarm(self, func, runat=None, runafter=None, **kwargs):
+        """
+        adds a timed callback to run the given func at the required time, note if the required delay is less
+        than the loop interval, the callback can be late (by not more than the loop interval)
+        """
+        assert not(runat is None and runafter is None)
+        targettime=runat if runafter is None else time.time()+runafter
+        newentry=(targettime, func, kwargs)
+        lloc=None
+        with self.datasem:
+            if self.timedacts:
+                for idx, alarm in enumerate(self.timedacts):
+                    if targettime < alarm[0]:
+                        lloc=idx
+                        break
+            if lloc is None:
+                self.timedacts.append(newentry)
+            else:
+                self.timedacts.insert(lloc, newentry)
+
+    def innerrun(self):
+        while self.requstate != 'stop':
+            time.sleep(1)
+            while self.timedacts and self.timedacts[0][0] < time.time():
+                with self.datasem:
+                    runthis=self.timedacts.pop(0)
+                runthis[1](**runthis[2])
+        self.updateState('complete')
+        if self.loglvl <= logging.INFO:
+            self.log.info(self.endedlogmsg())

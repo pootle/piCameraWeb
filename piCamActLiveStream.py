@@ -46,14 +46,6 @@ class StreamingOutput():
 livestreamtable=(
     (pchtml.htmlStatus  , pchtml.HTMLSTATUSSTRING),
     (pchtml.htmlStreamSize,{}),
-    (pchtml.htmlTimestamp, {'name': 'started', 'fallbackValue':0,
-            'strft': '%H:%M:%S' , 'unset':'never',
-            'onChange': ('dynamicUpdate','app'),
-            'label': 'started at',
-            'shelp': 'last time this view was started'}),
-    (pchtml.htmlTimestamp, {'name': 'stopped', 'fallbackValue':0,
-            'strft': '%H:%M:%S' , 'unset':'never',
-            'onChange': ('dynamicUpdate','app'),
-            'label': 'stopped at',
-            'shelp': 'last time this view stopped'}),
+    (pchtml.htmlStartedTimeStamp, {'shelp': 'last time this view was started'}),
+    (pchtml.htmlStoppedTimeStamp, {'shelp': 'last time this view stopped'}),
 )

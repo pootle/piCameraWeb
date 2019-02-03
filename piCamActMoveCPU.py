@@ -186,7 +186,7 @@ class mover(camSplitterAct,papps.appThreadAct):
     """
     When movement detected, variables 'triggercount' and 'lasttrigger' are updated.
     
-    The actual analysis is run in a separate thread. Since most of the work is in numpy, this thread does not block
+    The actual analysis is run in a separate thread. Since most of the work is in numpy, the thread does not block
     other python threads from running.
     """
     def innerrun(self):
@@ -249,9 +249,13 @@ class mover(camSplitterAct,papps.appThreadAct):
 ############################################################################################
 # user interface setup for cpu move detection - web page version 
 ############################################################################################
+EMPTYDICT={}
 
 cpumovetable=(
     (pchtml.htmlStatus  , pchtml.HTMLSTATUSSTRING),
+
+    (pchtml.htmlAutoStart, EMPTYDICT),
+
     (pchtml.htmlStreamSize, {'streamsizes': pcf.minisizes, 'writersOn':('app', 'pers')}),
     (pchtml.htmlInt,        {
             'readersOn': ('app', 'pers', 'html'),
@@ -259,7 +263,7 @@ cpumovetable=(
             'name'     : 'startskip', 'minv':0, 'maxv':100, 'clength':4, 'fallbackValue': 10,
             'label'    : 'skip on start',
             'shelp'    : 'on startup, number of frames to skip before detection starts'}),
-    (pchtml.htmlInt,        {'loglvl': logging.DEBUG,
+    (pchtml.htmlInt,        {
             'readersOn': ('app', 'pers', 'html'),
             'writersOn': ('app', 'pers', 'user'),
             'name' : 'framediv', 'minv':1, 'maxv':10, 'clength':4, 'fallbackValue':1,
@@ -315,7 +319,7 @@ cpumovetable=(
             'label': 'enable detection', 
             'shelp': 'enables / disables this motion detection method',
     }),
-    (pchtml.htmlInt,        { 'loglvl': logging.DEBUG,
+    (pchtml.htmlInt,        {
             'name'      : 'triggercount', 'fallbackValue': 0,
             'readersOn' : ('html', 'app', 'webv'),
             'writersOn' : ('app', 'pers'),
@@ -327,14 +331,6 @@ cpumovetable=(
             'onChange': ('dynamicUpdate','app'),
             'label': 'last trigger time',
             'shelp': 'time last triggered occurred'}),
-    (pchtml.htmlTimestamp, {'name': 'started', 'fallbackValue':0,
-            'strft': '%H:%M:%S' , 'unset':'never',
-            'onChange': ('dynamicUpdate','app'),
-            'label': 'started at',
-            'shelp': 'time this activity last started'}),
-    (pchtml.htmlTimestamp, {'name': 'stopped', 'fallbackValue':0,
-            'strft': '%H:%M:%S' , 'unset':'never',
-            'onChange': ('dynamicUpdate','app'),
-            'label': 'stopped at',
-            'shelp': 'time this activity last stopped'}),
+    (pchtml.htmlStartedTimeStamp, EMPTYDICT),
+    (pchtml.htmlStoppedTimeStamp, EMPTYDICT),
 )

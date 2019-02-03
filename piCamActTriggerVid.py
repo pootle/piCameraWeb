@@ -91,10 +91,14 @@ class triggeredVideo(camSplitterAct, papps.appThreadAct):
 ############################################################################################
 # group / table for tripped video recording
 ############################################################################################
-
+EMPTYDICT={}
 tripvidtable=(
     (pchtml.htmlStatus  , pchtml.HTMLSTATUSSTRING),
-    (pchtml.htmlStreamSize, {}),
+
+    (pchtml.htmlAutoStart, EMPTYDICT),
+
+    (pchtml.htmlStreamSize, EMPTYDICT),
+
     (pchtml.htmlFloat, {
             'readersOn': ('app', 'pers', 'html'),
             'writersOn': ('app', 'pers', 'user'),
@@ -148,14 +152,8 @@ tripvidtable=(
             'onChange': ('dynamicUpdate','app'),
             'label': 'last trigger time',
             'shelp': 'time last triggered occurred'}),
-    (pchtml.htmlTimestamp, {'name': 'started', 'fallbackValue':0,
-            'strft': '%H:%M:%S' , 'unset':'never',
-            'onChange': ('dynamicUpdate','app'),
-            'label': 'started at',
-            'shelp': 'time this activity last started'}),
-    (pchtml.htmlTimestamp, {'name': 'stopped', 'fallbackValue':0,
-            'strft': '%H:%M:%S' , 'unset':'never',
-            'onChange': ('dynamicUpdate','app'),
-            'label': 'stopped at',
-            'shelp': 'time this activity last stopped'}),
+
+    (pchtml.htmlStartedTimeStamp, EMPTYDICT),
+    (pchtml.htmlStoppedTimeStamp, EMPTYDICT),
+
 )

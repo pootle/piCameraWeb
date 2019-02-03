@@ -47,8 +47,6 @@ class piCamWeb(pch.cameraManager):
         with filepath.open('r') as sfile:
             page=sfile.read()
         pagevars={n:v.getValue('html') for n,v in self.items()}
-        print('=========================main page keys', pagevars.keys())
-        print('camstatus: ',pagevars['camstatus'].keys())
         pf=page.format(**pagevars) #camstat=pagevars['camstatus']['cont'], 
         return pf, filepath.suffix
 
@@ -67,7 +65,6 @@ class piCamWeb(pch.cameraManager):
         vars that can be updated by the app, and which we want to show to the user on the web page, use this callback
         at setup time to arrange for the front end to be updated.
         """
-        print('piCamWeb.piCamWeb.dynamicUpdate using webv on var',var.fhtmlid)
         self.webserver.addDynUpdate(var.fhtmlid, var.getValue('webv'))
 
     def setdetectmask(self, x):

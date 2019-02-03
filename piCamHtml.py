@@ -177,7 +177,21 @@ class htmlTimestamp(htmlgenBase, pforms.timeVar):
             
     def _getHtmlOutputValue(self):
         return self.genFixedContent.format(f=self, sval=self._getSValue('html'))
-    
+
+class htmlStartedTimeStamp(htmlTimestamp):
+    defaultName='started'
+    def __init__(self, name='started', fallbackValue=0, strft='%H:%M:%S', unset='never', onChange=('dynamicUpdate','app'),
+                label='started at', shelp='time this activity last started', **kwargs):
+        super().__init__(
+            name=name, fallbackValue=fallbackValue, strft=strft, unset=unset, onChange=onChange, label=label, shelp=shelp, **kwargs)
+
+class htmlStoppedTimeStamp(htmlTimestamp):
+    defaultName='stopped'
+    def __init__(self, name='stopped', fallbackValue=0, strft='%H:%M:%S', unset='never', onChange=('dynamicUpdate','app'),
+                label='stopped at', shelp='time this activity last stopped', **kwargs):
+        super().__init__(
+            name=name, fallbackValue=fallbackValue, strft=strft, unset=unset, onChange=onChange, label=label, shelp=shelp, **kwargs)
+
 class htmlString(htmlgenText, pforms.textVar):
     pass
 
@@ -212,6 +226,20 @@ class htmlChoice(htmlgenOption, pforms.listVar):
     generic choice field for simple drop down lists
     """
     pass
+
+class htmlAutoStart(htmlgenOption, pforms.listVar):
+    defaultName='autostart'
+    def __init__(self, name='autostart', vlists=('ON', 'OFF'), fallbackValue='OFF',    
+            readersOn = ('app', 'pers', 'html'),
+            writersOn = ('app', 'pers', 'user'),
+            label     = 'run on app start',
+            shelp     = 'sets this activity to automatically start when the app starts', **kwargs):
+        super().__init__(
+            name=name, vlists=vlists, fallbackValue=fallbackValue, readersOn=readersOn, writersOn=writersOn, label=label, shelp=shelp, **kwargs)
+#        self.addNotify(self.setAutostart, 'user')
+
+#    def setAutostart(self, oldValue, newValue, var, view):
+#        print("The user wants to change me")
 
 class htmlCyclicButton(htmlgenBase, pforms.listVar):
     def __init__(self, alist, app,

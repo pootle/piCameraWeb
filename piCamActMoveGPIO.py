@@ -76,9 +76,12 @@ class externalmover(papps.appThreadAct):
 ############################################################################################
 # user interface setup for gpio move detection - web page version 
 ############################################################################################
-
+EMPTYDICT={}
 extmovetable=(
     (pchtml.htmlStatus  , pchtml.HTMLSTATUSSTRING),
+
+    (pchtml.htmlAutoStart, EMPTYDICT),
+
     (pchtml.htmlInt,        {
             'name'      : 'triggerpin', 'minv':1, 'maxv':63, 'clength':2, 'fallbackValue': 17,'loglvl': logging.DEBUG,
             'readersOn' : ('html', 'app', 'pers'),
@@ -103,14 +106,7 @@ extmovetable=(
             'onChange': ('dynamicUpdate','app'),
             'label': 'last trigger time',
             'shelp': 'time last triggered (rising edge) detected'}),
-    (pchtml.htmlTimestamp, {'name': 'started', 'fallbackValue':0,
-            'strft': '%H:%M:%S' , 'unset':'never',
-            'onChange': ('dynamicUpdate','app'),
-            'label': 'started at',
-            'shelp': 'time this activity last started'}),
-    (pchtml.htmlTimestamp, {'name': 'stopped', 'fallbackValue':0,
-            'strft': '%H:%M:%S' , 'unset':'never',
-            'onChange': ('dynamicUpdate','app'),
-            'label': 'stopped at',
-            'shelp': 'time this activity last stopped'}),
+
+    (pchtml.htmlStartedTimeStamp, EMPTYDICT),
+    (pchtml.htmlStoppedTimeStamp, EMPTYDICT),
 )

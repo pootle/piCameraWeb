@@ -26,6 +26,12 @@ from piCamActMoveGPIO import externalmover as externalmover
 from piCamActLiveStream import liveVidStream
 from piCamActTriggerVid import triggeredVideo
 
+actstartparams={
+    'cpumove' : {'actclass': cpumover, 'withport': True},
+    'extmove' : {'actclass': externalmover, 'withport': False},
+    'tripvid' : {'actclass': triggeredVideo, 'withport': True},
+}
+
 class cameraManager(papps.appManager):
     """
     This class groups all the settings that can be applied to a picamera.PiCamera and manages the running camera
@@ -51,8 +57,13 @@ class cameraManager(papps.appManager):
         self['settings']['extmove']['run'].addNotify(self.extmotiondetect, 'user')
         self['settings']['extmove']['lasttrigger'].addNotify(self.movedetected, 'app')
         self['strmctrl']['camerastop'].addNotify(self.safeStopCamera,'user')
+        for actname in ('cpumove', 'tripvid', 'extmove'):
+            autovar = self['settings'][actname]['autostart']
+            if autovar.getValue('app')=='ON':
+                print('looks like I should start', actname)
+                self.addAlarm(func=self.flipActivity, runafter=3, actname=actname, start=True, **actstartparams[actname])
 
-    def dotest(self, var, view=None, oldValue=None, newValue=None):
+    def xxdotest(self, var, view=None, oldValue=None, newValue=None):
         print('you pressed', var.name)
         if var.name in self.activities:
             self.activities[var.name].requestFinish()
@@ -195,41 +206,36 @@ class cameraManager(papps.appManager):
             if act.usecount <= 0:
                 act.requestFinish()
 
-    def startCameraActivity(self, actname, actclass, withport):
-        if actname in self.activities:
-            if self.loglvl <= logging.WARN:
-                self.log.warn('{} activity already running, start request ignored'.format(actname))
-        else:
+    def flipActivity(self, actname, actclass, withport, start=None):
+        """
+        starts and stops activities on demand
+        
+        actname:   name of the activity
+        
+        actclass:  class to use to create the activity
+        
+        withport:  if true, a splitter port is allocated and passed to the activity
+        
+        start   :  if True then the activity is started if not present, otherwise no action
+                   if False then the activity is stopped if present, otherwise no action is taken
+                   if None then the activity is stopped if present else it is started
+        """
+        if actname in self.activities and not start is True:
+            self.activities[actname.requestFinish()]
+        elif not actname in self.activities and not start is False:
             if withport:
                 self.startPortActivity(actname=actname, actclass=actclass)
             else:
                 self.startActivity(actname=actname, actclass=actclass)
 
-    def stopCameraActivity(self, actname):
-        if actname in self.activities:
-            act=self.activities[actname]
-            act.requestFinish()
-        else:
-            if self.loglvl <= logging.WARN:
-                self.log.warn('{} activity not running, stop request ignored'.format(actname))
-
     def videotrigger(self, var=None, view=None, oldValue=None, newValue=None):
-        if 'tripvid' in self.activities:
-            self.stopCameraActivity('tripvid')
-        else:
-            self.startCameraActivity('tripvid', triggeredVideo, True)
+        self.flipActivity('tripvid', triggeredVideo, True)
 
     def cpumotiondetect(self, var=None, view=None, oldValue=None, newValue=None):
-        if 'cpumove' in self.activities:
-            self.stopCameraActivity('cpumove')
-        else:
-            self.startCameraActivity('cpumove', cpumover, True)
+        self.flipActivity('cpumove', cpumover, True)
 
     def extmotiondetect(self, var=None,  view=None, oldValue=None, newValue=None):
-        if 'extmove' in self.activities:
-            self.stopCameraActivity('extmove')
-        else:
-            self.startCameraActivity('extmove', externalmover, False)
+        self.flipActivity('extmove', externalmover, False)
 
     def movedetected(self, var=None, view=None, oldValue=None, newValue=None):
         if 'tripvid' in self.activities:
