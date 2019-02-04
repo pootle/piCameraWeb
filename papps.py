@@ -6,7 +6,7 @@ on demand as part of the app.
 
 The activities can run as additional threads or just respond to calls from elsewhere.
 """
-import threading, time, logging
+import threading, time, logging, sys, traceback
 
 import pforms
 
@@ -120,9 +120,10 @@ class appThreadAct(appActivity):
         try:
             self.innerrun()
         except:
-            exc_type, exc_value, exc_traceback=excInfo
-            log.critical('exception {} in {}\n    value: {}\n{}'.format(str(exc_type), text1, str(exc_value), 
-                    '\n'.join(traceback.format_tb(exc_traceback))))
+            if not self.log is None:
+                exc_type, exc_value, exc_traceback=sys.exc_info()
+                self.log.critical('exception {} in thread\n    value: {}\n{}'.format(str(exc_type), str(exc_value), 
+                        '\n'.join(traceback.format_tb(exc_traceback))))
         self.onActExit()
 
     def requestFinish(self):

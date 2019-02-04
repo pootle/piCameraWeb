@@ -191,18 +191,17 @@ camsettingstable=(
     (htmlCamContrast, {}),
     (htmlCamAwb_mode, {}),
     (htmlCamExpMode, {}),
-    (htmlCamExpoComp, {'loglvl':logging.DEBUG}),
+    (htmlCamExpoComp, {}),
+    (pchtml.htmlInt,        {
+            'name'      : 'camtimeout', 'fallbackValue': 10,
+            'readersOn' : ('html', 'app', 'pers'),
+            'writersOn' : ('app', 'user', 'pers'),
+            'onChange'  : ('dynamicUpdate','app'),
+            'label'     : 'camera timeout',
+            'shelp'     : 'time (seconds) delay to close camera after last activity finishes'}),
  )
 
-camsettingvalues={ # default values picked up from camera attribute classes
-#    'resolution': '640x480',
-#    'rotation'  :0,
-#    'framerate' : 30,
-#    'brightness': 50,
-#    'contrast'  : 0,
-#    'awbMode'   : 'auto',
-#    'expMode'   : 'auto',
-#    'expComp'   : 0,
+xxcamsettingvalues={ # default values picked up from camera attribute classes
 }
 
 ############################################################################################

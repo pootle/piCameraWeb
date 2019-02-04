@@ -46,10 +46,12 @@ class cameraManager(papps.appManager):
         self.cameraTimeout=None
         self.camStreams=[None, None, None, None]
         self.camlock=thrlock()          # allocate a lock to use for multithreading data protection
+        logging.info('opening camera for setup')
         with picamera.PiCamera() as tempcam:
             self.camType=tempcam.revision
             self.picam=tempcam
             super().__init__(name='camera', **kwargs)
+        logging.info('closing camera after setup')
         self.picam=None
         self['settings']['tripvid']['run'].addNotify(self.videotrigger, 'user')
         self['settings']['cpumove']['run'].addNotify(self.cpumotiondetect, 'user')
@@ -62,14 +64,6 @@ class cameraManager(papps.appManager):
             if autovar.getValue('app')=='ON':
                 print('looks like I should start', actname)
                 self.addAlarm(func=self.flipActivity, runafter=3, actname=actname, start=True, **actstartparams[actname])
-
-    def xxdotest(self, var, view=None, oldValue=None, newValue=None):
-        print('you pressed', var.name)
-        if var.name in self.activities:
-            self.activities[var.name].requestFinish()
-        else:
-            self.startActivity(actname=var.name,
-                actclass=papps.appActivity if var.name=='test1' else papps.appThreadAct)
 
     def saveDefaultSettings(self):
         settingsfile=pathlib.Path('~/.picamsettings.txt').expanduser()
@@ -92,9 +86,10 @@ class cameraManager(papps.appManager):
             desiredres=self['settings']['camsettings']['resolution'].getValue('app')
             self.picam=picamera.PiCamera(resolution=desiredres, framerate=self['settings']['camsettings']['framerate'].getValue('app'))
             for v in self['settings']['camsettings'].values():
-                print("check setting {}, apply is {}".format(v.name, v.liveUpdate))
-                if v.liveUpdate:
-                    v._applyVar()
+                if hasattr(v, 'liveUpdate'):
+                    print("check setting {}, apply is {}".format(v.name, v.liveUpdate))
+                    if v.liveUpdate:
+                        v._applyVar()
             self['camstatus'].setValue('app',self['settings']['camsettings']['resolution'].getValue('webv'))
             if self.loglvl <= logging.INFO:
                 self.log.info("pi camera (%s) starts with: frame rate %s screen size %s." % (
@@ -145,7 +140,7 @@ class cameraManager(papps.appManager):
             for act in self.camStreams:
                 if not act is None:
                     alldone=False
-            self.cameraTimeout=time.time()+10 if alldone else None
+            self.cameraTimeout=time.time()+self['settings']['camsettings']['camtimeout'].getValue('app') if alldone else None
             if self.loglvl <= logging.DEBUG:
                 self.log.debug('releases port {} - previously used by {}'.format(sPort, activity.name))
         else:
@@ -221,7 +216,7 @@ class cameraManager(papps.appManager):
                    if None then the activity is stopped if present else it is started
         """
         if actname in self.activities and not start is True:
-            self.activities[actname.requestFinish()]
+            self.activities[actname].requestFinish()
         elif not actname in self.activities and not start is False:
             if withport:
                 self.startPortActivity(actname=actname, actclass=actclass)
