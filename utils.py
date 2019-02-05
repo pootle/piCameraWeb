@@ -23,14 +23,12 @@ def findMyIp(wait=10):
                   )
         except OSError:
             if time.time() > waittill:
-                print("network timeout")
-                raise
-            elif time.time() > waittill:
-                return ''
+                print("network not available - timeout after %2.1f seconds" % wait)
+                return []
             else:
-                time.sleep(.3)
+                print('waiting for network')
+                time.sleep(.5)
                 
-
 def _tempfield(tempfilename):
     with open(tempfilename) as cput: #'/sys/class/thermal/thermal_zone0/temp'
         return int(cput.readline().strip())/1000

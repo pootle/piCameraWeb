@@ -222,8 +222,8 @@ def testcam2(**kwargs):
     allsettingsgroups=(
         (htmlgentabbedgroups, {'varlist': camsettingstable, 'name': 'camsettings', 'label': 'camera',}),
         (htmlgentabbedgroups, {'varlist': livestreamtable, 'name': 'livevid', 'label': 'live stream',}),
-        (htmlgentabbedgroups, {'varlist': cpumovetable, 'name': 'cpumove', 'label': 'cpu&nbsp;move test',}),
-        (htmlgentabbedgroups, {'varlist': extmovetable, 'name': 'extmove', 'label': 'gpio&nbsp;move test',}),
+        (htmlgentabbedgroups, {'varlist': cpumovetable, 'name': 'cpumove', 'label': 'cpu&nbsp;move detect',}),
+        (htmlgentabbedgroups, {'varlist': extmovetable, 'name': 'extmove', 'label': 'gpio&nbsp;move detect',}),
         (htmlgentabbedgroups, {'varlist': tripvidtable, 'name': 'tripvid', 'label': 'tripped video',}),
         (htmlgentabbedgroups, {'varlist': vidlisttable, 'name': 'listvid', 'label': 'list videos',}),
     )
