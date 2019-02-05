@@ -282,18 +282,18 @@ class camExpoComp(picamAttrMixin, pforms.listVar):
 
 stdstreamsizes={
     'ov5647' : (((1640,1232), (1230,924), (1200,900), (820,616), (800,600), (640,480), (410,308), (640,480)),
-                (640,480)),
+                '640x480'),
     'imx219' : (((1296,972), (972,729), (864,648), (800,600), (648,486), (640,480), (432,324), (324,243)),
-                (640,480))
+                '640x480')
 }
 
 minisizes={ # table used for cpu based motion analysis with added smaller sizes
     'ov5647' : (((1640,1232), (1230,924), (1200,900), (820,616), (800,600), (640,480), (410,308), (640,480), (320, 240), 
                         (280, 210), (200, 150), (128, 96), (64, 48)),
-                (64, 48)),
+                '64x48'),
     'imx219' : (((1296,972), (972,729), (864,648), (800,600), (648,486), (640,480), (432,324), (320, 240), 
                         (280, 210), (200, 150), (128, 96), (64, 48)),
-                (64, 48))
+                '64x48')
 }
 
 class streamResize(pforms.listVar):
@@ -310,7 +310,8 @@ class streamResize(pforms.listVar):
         """
         obname=self.defaultName if name is None else name
         appValues, default=streamsizes[app.camType]
-        vlists={v: ['{}x{}'.format(*s) for s in appValues] if v in ('html', 'pers', 'user') else appValues for v in app.allviews}
+        strvalues=['{}x{}'.format(*s) for s in appValues]
+        vlists={v: strvalues if v in ('html', 'pers', 'user') else appValues for v in app.allviews}
         super().__init__(name=obname, parent=parent, fallbackValue=default, app=app,
                 label='stream resolution',
                 shelp='the stream is resized to this resolution',
