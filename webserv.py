@@ -222,11 +222,16 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                     self.send_header('Pragma', 'no-cache')
                     self.send_header('Content-Type', 'multipart/x-mixed-replace; boundary=FRAME')
                     self.end_headers()
+                    loopctr=0
                     try:
                         while True:
                             with output.condition:
+                                if loopctr < 10 and self.server.loglvl <= logging.DEBUG:
+                                    self.server.log.debug('vidstream waiting for condition')
                                 output.condition.wait()
                                 frame = output.frame
+                                if loopctr < 10 and self.server.loglvl <= logging.DEBUG:
+                                    self.server.log.debug('vidstream got buffer length %d' %len(frame))
                             if len(frame) > 0:
                                 self.wfile.write(b'--FRAME\r\n')
                                 self.send_header('Content-Type', 'image/jpeg')
@@ -234,8 +239,10 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                                 self.end_headers()
                                 self.wfile.write(frame)
                                 self.wfile.write(b'\r\n')
+                            loopctr+=1
                     except BrokenPipeError:
-                        pass
+                        if self.server.loglvl <= logging.INFO:
+                            self.server.log.info('streaming client stopping - BrokenPipeError')
                     except Exception as e:
                         logException(self.server.log, 'Removed streaming client %s: %s' % (self.client_address, str(e)), sys.exc_info())
                     targetob.stopLiveStream()
@@ -524,7 +531,7 @@ if __name__ == '__main__':
         smsg='Starting webserver on multiple ip addresses (%s), port:%d' % (str(ips), server['port'])
     print(smsg)
     toplog.info(smsg)
-    server = ThreadedHTTPServer(('',serverconf['port']),pywebhandler, mypyconf=serverconf)
+    server = ThreadedHTTPServer(('',serverconf['port']),pywebhandler, mypyconf=serverconf, loglvl=args.consolelog)
     if args.interactive:
         print('interactive mode - start at server.mypyobjects')
         sthread=threading.Thread(target=server.serve_forever)

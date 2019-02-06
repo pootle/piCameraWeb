@@ -48,6 +48,7 @@ class cameraManager(papps.appManager):
         self.camlock=thrlock()          # allocate a lock to use for multithreading data protection
         logging.info('opening camera for setup')
         with picamera.PiCamera() as tempcam:
+            logging.info('camera opened OK')
             self.camType=tempcam.revision
             self.picam=tempcam
             super().__init__(name='camera', **kwargs)
@@ -186,20 +187,28 @@ class cameraManager(papps.appManager):
         if not 'livevid' in self.activities:
             act=self.startPortActivity('livevid', liveVidStream)
             if act is None:
+                if self.loglvl <=logging.INFO:
+                    self.log.warn('FAILED to start new livevidstream activity')
                 return None
             else:
                 act.usecount=1
+                if self.loglvl <= logging.INFO:
+                    self.log.info('starting livevidstream activity')
         else:
             act=self.activities['livevid']
             act.usecount+=1
+            if self.loglvl <= logging.INFO:
+                self.log.info('re-using livevidstream activity, count now %d' % act.usecount)
         return act.streambuff
 
     def stopLiveStream(self):
         if 'livevid' in self.activities:
             act=self.activities['livevid']
             act.usecount-=1
-            if act.usecount <= 0:
-                act.requestFinish()
+            if self.loglvl <=logging.INFO:
+                self.log.info('stopping live stream - count now %d' % act.usecount)
+#            if act.usecount <= 0:
+#                act.requestFinish()
 
     def flipActivity(self, actname, actclass, withport, start=None):
         """
