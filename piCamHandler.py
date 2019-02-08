@@ -207,8 +207,8 @@ class cameraManager(papps.appManager):
             act.usecount-=1
             if self.loglvl <=logging.INFO:
                 self.log.info('stopping live stream - count now %d' % act.usecount)
-#            if act.usecount <= 0:
-#                act.requestFinish()
+            if act.usecount <= 0:
+                act.requestFinish()
 
     def flipActivity(self, actname, actclass, withport, start=None):
         """

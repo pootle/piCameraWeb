@@ -34,31 +34,6 @@ class liveVidStream(camSplitterAct, papps.appThreadAct):
         return super().endedlogmsg() + '\n        onepartbuffercount: {:d}, multipartbuffercount: {:d}'.format(
                 self.streambuff.oneshotbuffs, self.streambuff.multishotbuffs)
         
-
-class xliveVidStream(camSplitterAct, papps.appActivity):
-    def start(self):
-        self.startDeclare()
-        self.streambuff=StreamingOutput()
-        self.streambuff.actback=self
-        self.parent.picam.start_recording(self.streambuff,
-                    format='mjpeg',
-                    splitter_port=self.sPort, 
-                    resize=self.vars['resize'].getValue('app'))
-
-    def requestFinish(self):
-        self.requstate='stop'
-        if self.loglvl <= logging.INFO:
-            self.log.info('calling stop recording')
-        self.parent.picam.stop_recording(splitter_port=self.sPort)
-        if self.loglvl <= logging.INFO:
-            self.log.info('returned from stop recording')
-        self.endDeclare()
-
-    def endedlogmsg(self):
-        return super().endedlogmsg() + '\n        onepartbuffercount: {:d}, multipartbuffercount: {:d}'.format(
-                self.streambuff.oneshotbuffs, self.streambuff.multishotbuffs)
-        
-
 class StreamingOutput():
     def __init__(self):
         self.frame = None
