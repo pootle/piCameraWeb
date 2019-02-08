@@ -243,7 +243,6 @@ class cameraManager(papps.appManager):
 
     def movedetected(self, var=None, view=None, oldValue=None, newValue=None):
         if 'tripvid' in self.activities:
-            print('piCamHandler: movedetected -vid triggered')
             act=self.activities['tripvid']
             act.trigger()
         else:

@@ -75,17 +75,19 @@ class triggeredVideo(camSplitterAct, papps.appThreadAct):
                 subp=Popen(cmd, universal_newlines=True, stdout=PIPE, stderr=PIPE)
                 outs, errs = subp.communicate(timeout=15)
                 rcode=subp.returncode
-                if False:
-#                if rcode ==0:
+                if rcode==0:
                     shutil.copystat(str(bfile), str(tfile))
-                    afile.unlink()
-                    bfile.unlink()                    
+                    if self.vars['saveX264'].getValue('app')=='OFF':
+                        afile.unlink()
+                        bfile.unlink()                    
                 if rcode != 0 and not errs is None:
-                    print('MP4Box stderr:')
-                    print('   ', errs)
+                    if self.loglvl<=logging.WARN:
+                        self.log.warn('MP4Box stderr:'+str(errs))
+                    else:
+                        print('MP4Box stderr:')
+                        print('   ', errs)
                 self.updateState('run')
         picam.stop_recording(splitter_port=self.sPort)
-#        self.summaryState='closing'
         self.endDeclare()
 
 ############################################################################################
@@ -133,6 +135,13 @@ tripvidtable=(
             'name' : 'file', 'fallbackValue': '%y/%m/%d/%H_%M_%S', 'clength':15,
             'label': 'filename',
             'shelp': 'filename with date-time compenents', 'shelp': 'extends the basefolder to define the filename for recorded videos.'}),
+
+    (pchtml.htmlChoice, {
+            'name': 'saveX264', 'vlists': ('OFF', 'ON'), 'fallbackValue': 'OFF',    
+            'readersOn' : ('app', 'pers', 'html'),
+            'writersOn' : ('app', 'pers', 'user'),
+            'label'     : 'save raw video',
+            'shelp'     : 'When on the raw video (X264) files are not deleted after final mp4 file created'}),
 
     (pchtml.htmlCyclicButton, {'loglvl':logging.DEBUG,
             'name': 'run',  'fallbackValue': 'start now', 'alist': ('start now', 'stop now '),

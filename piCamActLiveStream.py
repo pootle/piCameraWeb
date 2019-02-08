@@ -16,6 +16,7 @@ class liveVidStream(camSplitterAct, papps.appThreadAct):
         super().__init__(**kwargs)
 
     def innerrun(self):
+        self.startDeclare()
         self.parent.picam.start_recording(self.streambuff,
                     format='mjpeg',
                     splitter_port=self.sPort, 
