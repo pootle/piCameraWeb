@@ -1,0 +1,14 @@
+--- picamorig/camera.py	2019-02-09 10:17:44.007309000 +0000
++++ picamchanges/camera.py	2019-02-09 08:48:02.154865000 +0000
+@@ -1192,8 +1192,10 @@
+                     'There is no recording in progress on '
+                     'port %d' % splitter_port)
+         else:
++#               adding a short wait (.05 seconds) to the wait_recording call helps prevent
++#               the following call to encoder.close() hanging and locking the camera until reboot
+             try:
+-                self.wait_recording(0, splitter_port)
++                self.wait_recording(0.05, splitter_port)
+             finally:
+                 encoder.close()
+                 with self._encoders_lock:
