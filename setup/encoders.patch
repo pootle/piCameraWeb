@@ -1,0 +1,19 @@
+--- picamorig/encoders.py	2019-02-09 09:14:47.204380000 +0000
++++ picamchanges/encoders.py	2019-02-09 10:13:53.908867699 +0000
+@@ -38,6 +38,7 @@
+ str = type('')
+ 
+ import datetime
++import time
+ import threading
+ import warnings
+ import ctypes as ct
+@@ -433,6 +434,7 @@
+             self.encoder.disconnect()
+         if self.resizer:
+             self.resizer.disconnect()
++            time.sleep(.1)
+         if self.encoder:
+             self.encoder.close()
+             self.encoder = None
+

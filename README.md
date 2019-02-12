@@ -20,30 +20,13 @@ of http.server.HTTPServer, and takes a rather unconventional approach to web pag
 
 Most of the camera driving software is based on the excellent examples from the picamera package documentation
 
-## Installation and setup
-These notes exaplin how to get this running on a clean build of Raspbian Lite.
+The software includes:
 
-### after a clean build of raspbian (any version including lite)
+A simple motion detection system based of difference between successive frames
 
-> sudo apt-get install python3-pigpio git python3-pip gpac
+A simple eay to use an external motion detector (such as a PIR module connected via a GPIO port
 
-> sudo apt-get install python3-numpy
+A video recorder that creates a video when triggered with a few seconds of video before and after the trigger
 
-> sudo pip3 install picamera
-### Then (only if using gpio triggered motion detection - e.g. a PIR motion detector):
-Arrange for the pigpio daemon to start automatically - I use:
-> sudo crontab -e
-and add the line
-> @reboot              /usr/local/bin/pigpiod -c 256 -s 10
-### and to arrange to start this package on boot I use:
-> crontab -e
-and add the line
-> @reboot              ~/piCameraWeb/start.sh
-(adjust the folder name to match the folder this package is in.)
-## Running interactively and logging
-The main program uses argparse so run it with -j to see argument details. In particular you can arrange all logging to go
-to a file rather than the console (or even do both).
 
-Also by using a command line like:
-> python3 -i webserv.py -v 10 -c dummyConfig.py -i
-You can run interactively with the main webserver started in a new thread so you can type python in to interrogate the state and even call methods to do various things in parallel with the web service running.
+[More documentaton is available here.](https://picamdocs.readthedocs.io/en/latest/)
