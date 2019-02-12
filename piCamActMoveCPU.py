@@ -72,6 +72,7 @@ class changedImage():
         else:
             m=numpy.array(imgdata,dtype=numpy.bool_)
             if self.loglvl <= logging.INFO:
+                maskfile=self.vars['mask'].getFile()
                 self.log.info('using mask from file {}, data type is {}, size is {}, {} cells are ignored'.format(
                         str(maskfile), str(m.dtype), m.shape, numpy.count_nonzero(m)))
             self.mask=m
