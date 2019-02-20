@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 """
 piCamFields provides a set of classes derived from pforms xxxVar that handle the various camera and stream settings 
 that can be changed.like resolution, rotation, awb mode etc. for the camera and resize etc. for the streams.
@@ -13,6 +13,7 @@ in a settings file.
 
 import logging
 import pforms
+import pathlib
 
 #################################################################################################
 # The first group of classes are for the direct camera settings
@@ -317,3 +318,43 @@ class streamResize(pforms.listVar):
                 shelp='the stream is resized to this resolution',
                 vlists=vlists,
                 **kwargs)
+
+################################################################################
+# These classes have built in actions for things like controlling the cmaera led
+################################################################################
+
+class picamLED(pforms.listVar):
+    def __init__(self, vlists=('ON', 'OFF'), fallbackValue='ON',    
+            label     = 'run on app start',
+            shelp     = 'sets this activity to automatically start when the app starts', **kwargs):
+        
+        super().__init__(vlists=vlists, fallbackValue=fallbackValue, label=label, shelp=shelp, **kwargs)
+
+    def getledIsOn(self):
+        confile=pathlib.Path("/boot/config.txt")
+        with confile.open('r') as cfo:
+            si=-1
+            camline=None
+            while si==-1:
+                rl=cfo.readline()
+                if rl=='':
+                    break
+                si=rl.find('disable_camera_led')
+                if si>=0:
+                    camline=rl
+                    break
+            if camline is None:
+                return True
+            rl=rl.strip()
+            if rl.startswith('#'):
+
+                return True
+            rlparts=rl.split(sep='=', maxsplit=1)
+            if len(rlparts)==1:
+                return True
+            try:
+                if int(rlparts[1])==1:
+                    return False
+            except:
+                pass
+            return True

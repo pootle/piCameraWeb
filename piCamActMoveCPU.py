@@ -13,6 +13,7 @@ import piCamHtml as pchtml
 import piCamFields as pcf
 from piCamSplitter import camSplitterAct
 import pypnm
+import threading
 
 def makepalette(thresh):
     threshctr=thresh/2
@@ -46,13 +47,15 @@ class changedImage():
     This class compares a new image against the previous image by counting all cells where the difference
     between images is greater than a threshold value, then checking how many such cells there are.
     """
-    def __init__(self, vars, imagesize, loglvl=logging.DEBUG):
+    def __init__(self, vars, imagesize, buffers, loglvl=logging.DEBUG):
         """
         sets up a change test. Only Y value is used
         
         vars     : pforms var group with useful parameters
         
         imagesize: tuple of the size of the image we expect (any passed image is cropped to this size)
+        
+        buffers  : array of buffers in use - only the index is passed
         """
         self.log=None if loglvl is None else logging.getLogger(__loader__.name+'.'+type(self).__name__)
         self.loglvl=1000 if loglvl is None else loglvl
@@ -63,6 +66,7 @@ class changedImage():
         self.hitcount=0
         self.setMask()
         self.setDifflog()
+        self.buffers=buffers
 
     def setMask(self):
         imgdata=fetchmask(self, self.vars)
@@ -77,14 +81,15 @@ class changedImage():
                         str(maskfile), str(m.dtype), m.shape, numpy.count_nonzero(m)))
             self.mask=m
 
-    def check(self, newimage):
+    def check(self, newix):
         """
         checks the given image for change against the previous image
         
-        newimage: a numpy image of shape 3, >=width, >= height
+        newix: index to a numpy image of shape 3, >=width, >= height
         
         returns   a boolean, True if change detected
         """
+        newimage = self.buffers[newix]
         if self.mask is None:
             imin=newimage[0, :self.imagesize[1], :self.imagesize[0]]
         else:
@@ -164,17 +169,17 @@ class ciActivity(papps.appThreadAct):
         self.vars['triggercount'].setValue('app',0)
         while self.requstate != 'stop':
             try:
-                img=self.inQ.get(block=True, timeout=.3)
+                imx=self.inQ.get(block=True, timeout=.7)
             except queue.Empty:
-                img=None
-            if not img is None:
-                detect=self.engine.check(img)
+                imx=None
+            if not imx is None:
+                detect=self.engine.check(imx)
                 if detect:
                     self.vars['triggercount'].setValue('app',self.vars['triggercount'].getValue('app')+1)
                     self.vars['lasttrigger'].setValue('app',time.time())
                     if self.loglvl <= logging.DEBUG:
                         logging.debug('it moved, hitcount {} from {}'.format(self.engine.hitcount, type(self.engine.hits).__name__))
-                self.outQ.put(img)
+                self.outQ.put(imx)
         self.endDeclare()
 
 def calcbuff(width, height):
@@ -194,14 +199,19 @@ class mover(camSplitterAct,papps.appThreadAct):
         imgsize=self.vars['resize'].getValue('app')
         self.checkQueue=queue.Queue()
         self.returnQueue=queue.Queue()
+        narsize=calcbuff(*imgsize)
+        self.numpyBuffs=[numpy.empty(narsize, dtype=numpy.uint8) for _ in range(6)]
         self.parent.startActivity(actname='movedetect', actclass=ciActivity, vars=self.vars,
                     inQ=self.checkQueue, outQ=self.returnQueue,
                     analyser=changedImage,
                     analyserparams={
                         'imagesize': imgsize,
-                        'vars':self.vars})
-        narsize=calcbuff(*imgsize)
-        self.numpyBuffs=[numpy.empty(narsize, dtype=numpy.uint8) for _ in range(4)]
+                        'vars':self.vars,
+                        'buffers': self.numpyBuffs})
+        self.freebuffs=[x for x in range(len(self.numpyBuffs))]
+        self.bufflog=[None]*100
+        self.buffli=0
+        self.bufflock=threading.Lock()
         picam=self.parent.picam
         self.currentBuff=None
         self.procCount=0
@@ -210,8 +220,27 @@ class mover(camSplitterAct,papps.appThreadAct):
         self.parent.picam.capture_sequence(self, resize=imgsize, format=format, use_video_port=True, splitter_port=self.sPort)
         # capture sequence now calls the __iter__  and __next__ functions for each frame read and
         # only returns when the iterator raises StopIteration
+        self.printbufflog()
         self.parent.activities['movedetect'].requestFinish()
         self.endDeclare()
+
+    def addbufflog(self, msg, buffi):
+        with self.bufflock:
+            self.bufflog[self.buffli]=(time.time(), buffi, msg)
+            self.buffli += 1
+            if self.buffli >= len(self.bufflog):
+                self.buffli=0
+
+    def printbufflog(self):
+        for le in self.bufflog[self.buffli+1:-1]:
+            if not le is None:
+                self.printlogent(le)
+        for le in self.bufflog[0:self.buffli+1]:
+            if not le is None:
+                self.printlogent(le)
+
+    def printlogent(self, le):
+        print('{:12.2f} {:d} {:s}'.format(le[0]-self.clockatstart, le[1], le[2]))
 
     def startedlogmsg(self):
         return super().startedlogmsg()+' size {}, format {}, channel {}'.format(
@@ -226,26 +255,33 @@ class mover(camSplitterAct,papps.appThreadAct):
     def __next__(self):
         if self.requstate=='stop':
             if not self.currentBuff is None:
-                self.numpyBuffs.append(self.currentBuff)
+                self.addbufflog('final return', self.currentBuff)
+                self.freebuffs.append(self.currentBuff)
                 self.currentBuff=None
             raise StopIteration
         self.procCount+=1
         framediv=self.vars['framediv'].getValue('app')
         if not self.currentBuff is None:
             if self.procCount > self.vars['startskip'].getValue('app') and (framediv==1 or self.procCount % framediv == 0):
+                self.addbufflog('buff to proc', self.currentBuff)
                 self.checkQueue.put(self.currentBuff)
             else:
-                self.numpyBuffs.append(self.currentBuff)
+                self.addbufflog('immed recycle', self.currentBuff)
+                self.freebuffs.append(self.currentBuff)
         try:
             while True:
-                self.numpyBuffs.append(self.returnQueue.get(block=False))
+                fromq=self.returnQueue.get(block=False)
+                self.addbufflog('return from proc',fromq)
+                self.freebuffs.append(fromq)
         except queue.Empty:
             pass
         try:
-            self.currentBuff=self.numpyBuffs.pop()
+            self.currentBuff=self.freebuffs.pop()
+            self.addbufflog('from buff pool', self.currentBuff)
         except IndexError:
+            self.printbufflog()
             raise RuntimeError('Oh gawd, ran out of buffers')
-        return self.currentBuff
+        return self.numpyBuffs[self.currentBuff]
 
 ############################################################################################
 # user interface setup for cpu move detection - web page version 
