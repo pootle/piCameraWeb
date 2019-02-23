@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/python
 """
 Module to provide cpu based movement detection, within a piCamHandler environment
 """
@@ -177,8 +177,8 @@ class ciActivity(papps.appThreadAct):
                 if detect:
                     self.vars['triggercount'].setValue('app',self.vars['triggercount'].getValue('app')+1)
                     self.vars['lasttrigger'].setValue('app',time.time())
-                    if self.loglvl <= logging.DEBUG:
-                        logging.debug('it moved, hitcount {} from {}'.format(self.engine.hitcount, type(self.engine.hits).__name__))
+ #                   if self.loglvl <= logging.DEBUG:
+ #                       logging.debug('it moved, hitcount {} from {}'.format(self.engine.hitcount, type(self.engine.hits).__name__))
                 self.outQ.put(imx)
         self.endDeclare()
 
@@ -279,8 +279,10 @@ class mover(camSplitterAct,papps.appThreadAct):
             self.currentBuff=self.freebuffs.pop()
             self.addbufflog('from buff pool', self.currentBuff)
         except IndexError:
+            if self.loglvl < logging.INFO:
+                self.log.IN==info('RAN OUT OF BUFFERS')
             self.printbufflog()
-            raise RuntimeError('Oh gawd, ran out of buffers')
+            raise StopIteration
         return self.numpyBuffs[self.currentBuff]
 
 ############################################################################################
