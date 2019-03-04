@@ -283,8 +283,8 @@ class mover(camSplitterAct,papps.appThreadAct):
                 self.log.IN==info('RAN OUT OF BUFFERS')
             self.printbufflog()
             raise StopIteration
-        if self.procCount % 300 == 0 and self.loglvl < logging.DEBUG:
-            self.log.debug ('ticklog at {}, free buffers {}'.format(self.procCount, len(self.self.freebuffs)))
+        if self.procCount % 300 == 0 and self.loglvl <= logging.DEBUG:
+            self.log.debug ('ticklog at {}, free buffers {}'.format(self.procCount, len(self.freebuffs)))
         return self.numpyBuffs[self.currentBuff]
 
 ############################################################################################
