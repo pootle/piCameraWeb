@@ -28,5 +28,7 @@ patch /usr/local/lib/python3.5/dist-packages/picamera/streams.py streams.patch
 patch /usr/local/lib/python3.5/dist-packages/picamera/camera.py camera.patch
 patch /usr/local/lib/python3.5/dist-packages/picamera/encoders.py encoders.patch
 
+sudo ./wpaping_setup.sh
+
 echo "=============="
 echo "setup complete"

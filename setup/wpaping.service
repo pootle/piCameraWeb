@@ -1,0 +1,15 @@
+[Unit]
+Description=WPA Supplicant pinger
+Requires=network-online.target
+
+[Service]
+ExecStart=/usr/local/bin/wpaping
+User=root
+StandardInput=null
+StandardOutput=null
+StandardError=null
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
+
