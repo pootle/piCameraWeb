@@ -14,6 +14,7 @@ in a settings file.
 import logging
 import pforms
 import pathlib
+import inspect
 
 #################################################################################################
 # The first group of classes are for the direct camera settings
@@ -51,9 +52,11 @@ class picamAttrMixin():
         try:
             super().__init__(name=obname, **kwargs)
         except TypeError:
-            print('TypeError calling constructor from picamAttrMixin with parameters {}'.format(kwargs))
-            print(kwargs)
-            sig=signature(super().__init__)
+            if self.log:
+                logging.critical('TypeError calling constructor from picamAttrMixin with parameters {}'.format(kwargs))
+            else:
+                print('TypeError calling constructor from picamAttrMixin with parameters {}'.format(kwargs))
+            sig=inspect.signature(super().__init__)
             for pname in sig.parameters.keys():
                 print(pname)
             raise
@@ -64,7 +67,16 @@ class picamAttrMixin():
         """
         updated=super().setValue(view, value)
         if self.liveUpdate and not self.app.picam is None:
-            setattr(self.app.picam, self.camAttr, super().getValue('app'))
+            try:
+                setattr(self.app.picam, self.camAttr, super().getValue('app'))
+            except:
+                sval=super().getValue('app')
+                errstr='FAIL trying to set camera attribute {} with value >{}< of type {}'.format(self.camAttr, sval, type(sval).__name__)
+                if self.log:
+                    logging.critical(errstr)
+                else:
+                    print(errstr)
+                raise
 
     def readRealCamera(self):
         val=getattr(self.app.picam, self.camAttr)
@@ -184,7 +196,7 @@ class camBrightness(picamAttrMixin, pforms.intervalVar):
 
     def __init__(self, readers, writers, **kwargs):
         super().__init__(fallbackValue=50,
-                minv=0, maxv=100, interval=1, rounding=True,
+                minv=0, maxv=100, interval=1, rounding=True, asint=True,
                 readers=pforms.extendViews(readers, {'app': '_getCValue', 'pers': '_getCValue'}),
                 writers=pforms.extendViews(writers, {'app': '_validNum', 'pers': '_validNum'}),
                 camAttr='brightness', liveUpdate=True,
@@ -197,7 +209,7 @@ class camContrast(picamAttrMixin, pforms.intervalVar):
 
     def __init__(self, readers, writers, **kwargs):
         super().__init__(fallbackValue=0,
-                minv=-100, maxv=100, interval=1, rounding=True,
+                minv=-100, maxv=100, interval=1, rounding=True, asint=True,
                 readers=pforms.extendViews(readers, {'app': '_getCValue', 'pers': '_getCValue'}),
                 writers=pforms.extendViews(writers, {'app': '_validNum', 'pers': '_validNum'}),
                 camAttr='contrast', liveUpdate=True,
@@ -299,7 +311,7 @@ minisizes={ # table used for cpu based motion analysis with added smaller sizes
 
 class streamResize(pforms.listVar):
     """
-    activites that use a splitter port can resize the video, this provides a standard class to deal with this resizing
+    activities that use a splitter port can resize the video, this provides a standard class to deal with this resizing
     """
     defaultName='resize'
 

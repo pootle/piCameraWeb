@@ -47,7 +47,7 @@ class htmlgenBase():
             }
 
     def _getHtmlOutputValue(self):
-        return self.genFixedContent.format(f=self, sval=str(self._getVar()))
+        return self.genFixedContent.format(f=self, sval=self.getValue('webv'))
 
     def _getHtmlInputValue(self):
         raise NotImplementedError('unable to create html for user editable field {} of class {}'.format(
@@ -77,9 +77,6 @@ class htmlgenOption(htmlgenBase):
         if self.loglvl <= logging.DEBUG:
             self.log.debug('_getHtmlInputValue returns %s' % mv)
         return mv
-
-    def _getHtmlOutputValue(self):
-        return self.genFixedContent.format(f=self, sval=self.getValue('pers'))
 
     def webUpdateValue(self, value):
         if self.setValue('user', value[0]):
@@ -124,9 +121,6 @@ class htmlgenPlainText(htmlgenBase):
                 writers=pforms.extendViews(writers, {'app': '_validStr', 'pers': '_validStr', 'user': '_validStr'}),
                 **kwargs)
 
-    def _getHtmlOutputValue(self):
-        return self.genFixedContent.format(f=self, sval=str(self._getVar()))
-
     def _getSValue(self, view):
         return self._getVar()
 
@@ -138,18 +132,16 @@ class htmlgenNumber(htmlgenBase):
                    '''min="{f.minv:}" max="{f.maxv:}" pattern="-?\d+" style="width: {f.clength:}em" onchange="appNotify(this, 'abcd')" />''')
                 # the valueu values defines the content of the value cell when the user can change it (although the
                 # user update can be separately disabled)
-    def __init__(self, clength=3, numstr='{}', readers=None, writers=None, **kwargs):
-        self.numstr=numstr
+    def __init__(self, clength=3, readers=None, writers=None, **kwargs):
         self.clength=clength
-        rx=pforms.extendViews(readers, {'app': '_getCValue', 'html': '_getHtmlValue', 'webv': '_getSValue', 'pers': '_getCValue'})
+        rx=pforms.extendViews(readers, {'app': '_getCValue', 'html': '_getHtmlValue', 'webv': '__str__', 'pers': '_getCValue'})
         wx=pforms.extendViews(writers, {'app': '_validNum', 'user': '_validNum', 'pers': '_validNum'})
         super().__init__(readers=rx, writers=wx, **kwargs)
  
     def _getHtmlInputValue(self):
-        cval=self.numstr.format(self._getVar())
-        mv=self.numinputhtml.format(f=self, sval=cval)
+        mv=self.numinputhtml.format(f=self, sval=str(self))
         if self.loglvl <= logging.INFO:
-            self.log.info('_getHtmlInputValue returns %s' % mv)
+            self.log.info('_getHtmlInputValue for field %s returns %s' % (self.name, mv))
         return mv
 
     def webUpdateValue(self, value):
@@ -159,7 +151,7 @@ class htmlgenNumber(htmlgenBase):
             return {'resp':200, 'rdata': '{} unchanged at {}'.format(self.name, str(self.getValue('app')))}
 
 class htmlStreamSize(htmlgenOption, pcf.streamResize):
-    def __init__(self, readersOn=('app', 'pers', 'html'), writersOn=('app', 'pers', 'user'), **kwargs):
+    def __init__(self, readersOn=('app', 'pers', 'webv', 'html'), writersOn=('app', 'pers', 'user'), **kwargs):
         super().__init__(readersOn=readersOn, writersOn=writersOn, **kwargs)
 
 class htmlTimestamp(htmlgenBase, pforms.timeVar):
@@ -175,9 +167,6 @@ class htmlTimestamp(htmlgenBase, pforms.timeVar):
                 writersOn=writersOn,
                 **kwargs)
             
-    def _getHtmlOutputValue(self):
-        return self.genFixedContent.format(f=self, sval=self._getSValue('html'))
-
 class htmlStartedTimeStamp(htmlTimestamp):
     defaultName='started'
     def __init__(self, name='started', fallbackValue=0, strft='%H:%M:%S', unset='never', onChange=('dynamicUpdate','app'),
@@ -236,10 +225,6 @@ class htmlAutoStart(htmlgenOption, pforms.listVar):
             shelp     = 'sets this activity to automatically start when the app starts', **kwargs):
         super().__init__(
             name=name, vlists=vlists, fallbackValue=fallbackValue, readersOn=readersOn, writersOn=writersOn, label=label, shelp=shelp, **kwargs)
-#        self.addNotify(self.setAutostart, 'user')
-
-#    def setAutostart(self, oldValue, newValue, var, view):
-#        print("The user wants to change me")
 
 class htmlCyclicButton(htmlgenBase, pforms.listVar):
     def __init__(self, alist, app,

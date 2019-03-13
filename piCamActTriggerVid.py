@@ -104,14 +104,14 @@ tripvidtable=(
     (pchtml.htmlFloat, {
             'readersOn': ('app', 'pers', 'html'),
             'writersOn': ('app', 'pers', 'user'),
-            'name': 'backtime',  'minv':0, 'maxv':15, 'clength':4, 'numstr':'{:2.2f}', 'fallbackValue':1,
+            'name': 'backtime',  'minv':0, 'maxv':15, 'clength':4, 'formatString':'{value:2.2f}', 'fallbackValue':1,
             'label':'pre-trigger record time', 
             'shelp':'number of seconds before trigger to include in video',
     }),
     (pchtml.htmlFloat, {
             'readersOn': ('app', 'pers', 'html'),
             'writersOn': ('app', 'pers', 'user'),
-            'name' : 'forwardtime',  'minv':0, 'maxv':15, 'clength':4, 'numstr':'{:2.2f}', 'fallbackValue':1,
+            'name' : 'forwardtime',  'minv':0, 'maxv':15, 'clength':4, 'formatString':'{value:2.2f}', 'fallbackValue':1,
             'label':'post-trigger record time', 
             'shelp':'number of seconds after trigger ends to include in video',
     }),

@@ -83,7 +83,7 @@ extmovetable=(
     (pchtml.htmlAutoStart, EMPTYDICT),
 
     (pchtml.htmlInt,        {
-            'name'      : 'triggerpin', 'minv':1, 'maxv':63, 'clength':2, 'fallbackValue': 17,'loglvl': logging.DEBUG,
+            'name'      : 'triggerpin', 'minv':1, 'maxv':63, 'clength':2, 'fallbackValue': 17,
             'readersOn' : ('html', 'app', 'pers'),
             'writersOn' : ('app', 'pers', 'user'),            
             'label'     : 'gpio pin',

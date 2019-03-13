@@ -189,14 +189,16 @@ class baseVar(ptree.treeob):
     def __repr__(self):
         return "{}(value={}, loglvl={})".format(self.__class__.__name__, self.getValue('app'), self.loglvl)
 
-    def __str__(self):
-        return self.formatString.format(value=self._getVar(),var=self)
-
-    def _getFValue(self, view):
-        """
-        returns the value using the formatString
-        """
-        return self.__str__()
+    def __str__(self, view=None):
+        try:
+            return self.formatString.format(value=self._getVar(),var=self)
+        except:
+            emsg='FAIL in field {} of type {} using format string >{}< with  value={}'.format(self.getHierName(), type(self).__name__, self.formatString, self._getVar())
+            if self.log:
+                self.log.critical(emsg)
+            else:
+                print(emsg)
+            raise
 
     def getValue(self, view):
         """
@@ -251,6 +253,13 @@ class baseVar(ptree.treeob):
     def _getVar(self):
         return self.__lvvalue
 
+    def _getSValue(self, view):
+        """
+        returns the value as a string
+        """
+        return '{}'.format(self._getVar())
+
+
 class textVar(baseVar): 
     """
     A refinement of baseVar for text strings.
@@ -271,31 +280,40 @@ class textVar(baseVar):
             raise ValueError('text var cannot be >None<')
         return str(value)
 
-    def _getStr(self, view):
-        """
-        returns the canonical form as this is already a string        
-        """
-        return self._getVar()
-
 class numVar(baseVar):
     """
-    A refinement of baseVar that restricts the value to numbers - simple floating point
-    
-    To force integers, use an intervalVar with interval of 1.
+    A refinement of baseVar that restricts the value to numbers - simple floating point.
+    Can also be forced to be an int. Note that ints in Python are unbounded, whereas floats do have an absolute
+    maximimum value
     """
-    def __init__(self, maxv=sys.float_info.max, minv=-sys.float_info.max, **kwargs):
+    def __init__(self, maxv=sys.float_info.max, minv=-sys.float_info.max, asint=False, **kwargs):
         """
-        Makes a field a float with given min and max values - by default min and max are the values of the underlying float type.
+        Makes a field a float or int with given min and max values - by default:
+            for floats min and max are the values of the underlying float type.
+            for ints minv and maxv can also be None if which case they are unbounded
         
         minv        : the lowest allowed value - use 0 to allow only positive numbers
         
         maxv        : the highest value allowed
+        
+        asint       : if True, then only integer values are allowed
         """
-        minvf=float(minv)
-        maxvf=float(maxv)
-        assert minvf < maxvf, "minimum value ({}) must be less than maximum value({})".format(minv,maxv)
-        self.maxv=maxvf
-        self.minv=minvf
+        self.asint=True if asint is True else False
+        if asint:
+            if minv is None:
+                self.minv = None
+            else:
+                self.minv=int(minv)
+            if maxv is None:
+                self.maxv = None
+            else:
+                self.maxv=int(maxv)
+        else:
+            minvf=float(minv)
+            maxvf=float(maxv)
+            self.maxv=maxvf
+            self.minv=minvf
+        assert self.minv is None or self.maxv is None or self.minv < self.maxv, "minimum value ({}) must be less than maximum value({})".format(self.minv, self.maxv)
         super().__init__(**kwargs)
 
     def _validNum(self, view, value):
@@ -304,29 +322,23 @@ class numVar(baseVar):
         
         value   : the requested new value for the field, can be anything that float(x) can handle that is between minv and maxv
         
-        returns : the valid new value (this is always a float)
+        returns : the valid new value (this is always a float or int as defined at instantiation by asint)
         
         raises  : ValueError if the provided value is invalid
         
-        because float(x) accepts strings or generic numbers we only need 1 conversion function.
+        because float(x) and int(x) accept strings or generic numbers we only need 1 conversion function.
         """
-        av=float(value)
-        if self.minv <= av <= self.maxv:
-            return av
-        else:
+        av=int(value) if self.asint else float(value)
+        if (not self.minv is None and av < self.minv) or (not self.maxv is None and av > self.maxv):
             raise ValueError("{} is not a valid value for field {}".format(value, self.name))
+        else:
+            return av
 
     def _getCValue(self, view):
         """
-        returns the internal representation (which in the base class is always a float).
+        returns the internal representation (which in the base class is always a float or int as defined by asint).
         """
         return self._getVar()
-
-    def _getSValue(self, view):
-        """
-        returns the value as a string
-        """
-        return '{}'.format(self._getVar())
 
 class intervalVar(numVar):
     """
@@ -334,39 +346,42 @@ class intervalVar(numVar):
     
     use an integer interval to force the field to be integer rather than float
     """
-    def __init__(self, interval=1, rounding=True, maxv=sys.float_info.max, minv=-sys.float_info.max, 
-                 **kwargs):
+    def __init__(self, interval=1, rounding=True, asint=False, **kwargs):
         """
-        minv     : repeated from numField so we can use int if appropriate
-        maxv     : repeated from numField so we can use int if appropriate
-        interval : the interval between valid values, integer values of interval mean the appValue is always an integer
+        interval : the interval between valid values
         
         rounding : if True then values not on interval boundaries are rounded to the nearest interval boundary, otherwise 
                    validation will fail
         """
-        if round(interval)==interval:
-            self.isint=True
+        if asint:
             self.interval=int(interval)
         else:
-            self.isint=False
-            self.interval=interval
-        self.rounding=rounding
-        super().__init__(minv=int(minv) if self.isint else minv, maxv=int(maxv) if self.isint else maxv, **kwargs)
+            self.interval=float(interval)
+        self.rounding=rounding if rounding is True else False
+        super().__init__(asint=asint, **kwargs)
+ 
 
     def _validNum(self, view, value):
-        try:
-            fval=int(value)
-        except:
-            fval=float(value)
-        if self.interval is 1:                                 # 'cos in Python there is only 1 1. For just an int, an easier test is done
-            if self.rounding:
-                av=round(fval)
+        if self.asint:
+            if isinstance(value,float):
+                fval=value
             else:
-                testv=round(fval)
-                if testv==fval:
-                    av=testv
-                else:
-                    raise ValueError("{} is not a valid value for field {}".format(appValue, 'xxxxx'))
+                try:
+                    fval=int(value)
+                except ValueError:
+                    fval=round(float(value))
+        else:
+            fval=float(value)
+        if self.interval is 1 and self.asint:                                 # 'cos in Python there is only 1 1. For just an int, an easier test is done
+            av=fval
+        elif self.asint:
+            err=fval % self.interval
+            if err==0:
+                av=fval
+            elif self.rounding:
+                av=fval-err if fval > 0 else fval+self.interval-err
+            else:
+                raise ValueError("{} is not a valid value for field {}".format(value, self.name))
         else:
             testv=round(fval/self.interval,0)*self.interval   # can fail if interval very small and number is approaching max float value
             if self.rounding:
@@ -375,7 +390,7 @@ class intervalVar(numVar):
                 av=testv
             else:
                 raise ValueError("{} is not a valid value for field {}".format(appValue, 'xxxxx'))
-            if self.isint:
+            if self.asint:
                 av=int(av)
         if self.minv <= av <= self.maxv:
             return av

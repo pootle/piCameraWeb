@@ -18,6 +18,7 @@ from piCamActMoveGPIO import extmovetable
 from piCamActLiveStream import livestreamtable
 from piCamActTriggerVid import tripvidtable
 from piCamActListVid import vidlisttable
+from piCamSystem import systemtable
 
 class piCamWeb(pch.cameraManager):
     def __init__(self, webserver, loglvl=logging.INFO, **kwargs):
@@ -27,10 +28,10 @@ class piCamWeb(pch.cameraManager):
         The views used are:
             'app'  : used by the pch.cameraManager to read and write vars
             'html' : used to generate the full html for a var to insert into the web page
-            'webv' : used to fetch the value of a var when we are dynamically updating the web page - typically
+            'webv' : used to fetch the value of a var when reading or  updating the web page - typically
                      after the app has changed a value
-            'user' : used to write a var with input from the user via the web browser / web server
-            'pers' : used to fetch / set values that we want to save and restore.
+            'user' : used to write a var with input from the user via (in this case) the web browser / web server
+            'pers' : (for persistent) used to fetch / set values that we want to save and restore.
         """
         self.webserver=webserver
         super().__init__(
@@ -201,9 +202,6 @@ camsettingstable=(
             'shelp'     : 'time (seconds) delay to close camera after last activity finishes'}),
  )
 
-xxcamsettingvalues={ # default values picked up from camera attribute classes
-}
-
 ############################################################################################
 # stream and camera start / stop buttons
 ############################################################################################
@@ -226,6 +224,7 @@ def testcam2(**kwargs):
         (htmlgentabbedgroups, {'varlist': extmovetable, 'name': 'extmove', 'label': 'gpio&nbsp;move detect',}),
         (htmlgentabbedgroups, {'varlist': tripvidtable, 'name': 'tripvid', 'label': 'tripped video',}),
         (htmlgentabbedgroups, {'varlist': vidlisttable, 'name': 'listvid', 'label': 'list videos',}),
+        (htmlgentabbedgroups, {'varlist': systemtable, 'name': 'system', 'label': 'system info',}),
     )
     allsettings=(
         (htmlgencat, {'varlist': allsettingsgroups, 'name': 'settings',
@@ -251,7 +250,7 @@ def testcam2(**kwargs):
         with settingsfile.open() as sf:
             settings=json.load(sf)
     cm=piCamWeb(
-           varlist=allsettings, value=settings, valueView='pers', 
+           varlist=allsettings, value=settings, valueView='pers',
            **kwargs
     )
     cmthread=threading.Thread(target=cm.runloop, name='camMan')
