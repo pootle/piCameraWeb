@@ -6,7 +6,7 @@ echo "checking system is up to date........."
 
 apt-get -q update
 
-apt-get -q -y update
+apt-get -q -y upgrade
 
 echo "====================================================="
 echo "installing addtional software required by piCameraWeb"
@@ -24,11 +24,9 @@ echo "===================================="
 echo "applying patches to picamera package"
 echo "===================================="
 
-patch /usr/local/lib/python3.5/dist-packages/picamera/streams.py streams.patch
-patch /usr/local/lib/python3.5/dist-packages/picamera/camera.py camera.patch
-patch /usr/local/lib/python3.5/dist-packages/picamera/encoders.py encoders.patch
+python3 picampatch.py
 
-sudo ./wpaping_setup.sh
+./wpaping_setup.sh
 
 echo "=============="
 echo "setup complete"

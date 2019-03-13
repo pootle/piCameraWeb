@@ -19,7 +19,7 @@ class htmlCameraLED(pcmh.htmlgenOption, pforms.listVar):
             name=name, vlists=vlists, fallbackValue=val, readersOn=readersOn, writersOn=writersOn, label=label, shelp=shelp, **kwargs)
 
 def getvgensetting(pvals, checkval):
-    out = check_output(['sudo','vcgencmd']+pvals, universal_newlines=True).split()
+    out = check_output(['vcgencmd', ]+pvals, universal_newlines=True).split()
     outs=[v.split('=') for v in out]
     for o in outs:
         if o[0]==checkval:
