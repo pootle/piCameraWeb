@@ -18,7 +18,8 @@ from piCamActMoveGPIO import extmovetable
 from piCamActLiveStream import livestreamtable
 from piCamActTriggerVid import tripvidtable
 from piCamActListVid import vidlisttable
-from piCamSystem import systemtable
+from piCamActWatcher import systemtable, watcherGroup
+from piCamHtmlTables import htmlgentable, htmlgentabbedgroups
 
 class piCamWeb(pch.cameraManager):
     def __init__(self, webserver, loglvl=logging.INFO, **kwargs):
@@ -90,30 +91,6 @@ class piCamWeb(pch.cameraManager):
         else:
             rdata={'msg':'I got the data', 'mdata': maskdata}
         return {'resp': 200, 'rdata': rdata}
-
-class htmlgentable(pforms.groupVar):
-    """
-    mixin for pforms field groups that create an html table for all the fields
-    """
-    groupwrapper='<table>{childfields}</table>'
-    childwrapper='<tr><th scope="row">{label:}</th><td class="value">{cont:}</td><td class="helpbtn" title="{shelp:}">?</td></tr>\n'
-    def _getHtmlValue(self, view):
-        rows='\n'.join([self.childwrapper.format(**ch.getValue('html')) for ch in self.values()])
-        return self.groupwrapper.format(childfields=rows,f=self)
-
-class htmlgentabbedgroups(htmlgentable):
-    groupwrapper=('<input name="tabgroup1" id="{f.name}" type="radio" >'
-                        '<section>\n'
-                        '    <h1><label for="{f.name}">{f.label}</label></h1>\n'
-                        '    <div><table>\n{childfields}</table></div>'
-                        '</section>\n')
-    def __init__(self, readers=None, readersOn=('app', 'html', 'pers'), writers=None,writersOn=('app', 'pers'), **kwargs):
-        super().__init__(
-                readers=pforms.extendViews(readers, {'app':'_getValueDict', 'html': '_getHtmlValue', 'pers':'_getValueDict'}),
-                readersOn=readersOn,
-                writers=pforms.extendViews(writers, {'app':'_setValueDict', 'pers': '_setValueDict'}),
-                writersOn=writersOn,
-                **kwargs)
 
 class htmlgenbtns(htmlgentable):
     groupwrapper='{childfields}'
@@ -224,7 +201,7 @@ def testcam2(**kwargs):
         (htmlgentabbedgroups, {'varlist': extmovetable, 'name': 'extmove', 'label': 'gpio&nbsp;move detect',}),
         (htmlgentabbedgroups, {'varlist': tripvidtable, 'name': 'tripvid', 'label': 'tripped video',}),
         (htmlgentabbedgroups, {'varlist': vidlisttable, 'name': 'listvid', 'label': 'list videos',}),
-        (htmlgentabbedgroups, {'varlist': systemtable, 'name': 'system', 'label': 'system info',}),
+        (watcherGroup,        {'varlist': systemtable, 'name': 'watcher', 'label': 'system info',}),
     )
     allsettings=(
         (htmlgencat, {'varlist': allsettingsgroups, 'name': 'settings',
@@ -256,4 +233,4 @@ def testcam2(**kwargs):
     cmthread=threading.Thread(target=cm.runloop, name='camMan')
     cmthread.start()
     print("camera web handler thread started")
-    return cm#, cmthread
+    return cm 

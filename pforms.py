@@ -247,6 +247,9 @@ class baseVar(ptree.treeob):
         else:
             raise RuntimeError('view {} not known in field {}'.format(view, self.name))
 
+    def getAllViews(self):
+        return self.app.allviews
+
     def _setVar(self, value):
         self.__lvvalue=value
 

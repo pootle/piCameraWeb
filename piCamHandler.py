@@ -25,6 +25,7 @@ from piCamActMoveCPU import mover as cpumover
 from piCamActMoveGPIO import externalmover as externalmover
 from piCamActLiveStream import liveVidStream
 from piCamActTriggerVid import triggeredVideo
+from piCamActWatcher import watcher as watcheract
 
 actstartparams={
     'cpumove' : {'actclass': cpumover, 'withport': True},
@@ -65,6 +66,7 @@ class cameraManager(papps.appManager):
             if autovar.getValue('app')=='ON':
                 print('looks like I should start', actname)
                 self.addAlarm(func=self.flipActivity, runafter=3, actname=actname, start=True, **actstartparams[actname])
+        self.addAlarm(func=self.startActivity, runafter=1.5, actname='watcher', actclass=watcheract)
 
     def saveDefaultSettings(self):
         settingsfile=pathlib.Path('~/.picamsettings.txt').expanduser()
