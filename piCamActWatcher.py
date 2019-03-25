@@ -20,11 +20,42 @@ class watcher(papps.appThreadAct):
     def endedlogmsg(self):
         return 'finished system watcher'
 
+    def movewatcher(self):
+        b=self.parent.activities
+        try:
+            mact=b['cpumove']
+        except:
+            return
+        if hasattr(self,'mwcount'):
+            if time.time() > self.mwtime+60:
+                if self.mwcount == mact.procCount:
+                    self.mwfails+=1
+                    if self.mwfails>4:
+                        if self.log:
+                            self.log.critical('cpu move problem? rebooting')
+                        time.sleep(1)
+                        print('restart')
+                        check_output(['sudo','shutdown', '-r', 'now'])
+                    else:
+                        print('warn')
+                        if self.loglvl > logging.WARN:
+                            self.log.warn('cpumove stuck? count is %d' % self.mwfails)
+                else:
+                    self.mwfails=0
+        else:
+            if self.loglvl > logging.INFO:
+                self.log.info('cpumove watcher started')
+            print('cpumove watcher started')
+            self.mwtime=time.time()
+            self.mwcount=mact.procCount
+            self.mwfails=0
+
     def tick(self):
         changed, changeset = self.vars.throtcheck.checkThrottles()
         if changed:
             for fname in changset:
                 self.vars['fname'].setValue('app',  self.vars.throtcheck.getThrottleState(fname))
+        self.movewatcher()
 
     def run(self):
         self.startDeclare()
@@ -136,7 +167,7 @@ class htmlBool(pchtml.htmlgenOption, boolVar):
         raise NotImplementedError()
 
 ############################################################################################
-# user interface setup for gpio move detection - web page version 
+# user interface setup for watcher - web page version 
 ############################################################################################
 class htmlCameraLED(pchtml.htmlgenOption, pforms.listVar):
     defaultName='camled'
@@ -296,26 +327,6 @@ systemtable=(
     (htmlCameraEnabled, EMPTYDICT),
     (htmlCameraPresent, EMPTYDICT),
     (htmlFreeSpace, EMPTYDICT),
-
-#    (pchtml.htmlCyclicButton, {
-#            'name' : 'run',  'fallbackValue': 'start now', 'alist': ('start now', 'stop now '),
-#            'onChange'  : ('dynamicUpdate','user'),
-#            'label': 'enable detection', 
-#            'shelp': 'enables / disables this motion detection method',
- #   }),
- #   (pchtml.htmlInt,        {
-#            'name'      : 'triggercount', 'fallbackValue': 0,
-#            'readersOn' : ('html', 'app', 'webv'),
-#            'writersOn' : ('app', 'pers'),
-#            'onChange'  : ('dynamicUpdate','app'),
-#            'label'     : 'triggers',
-#            'shelp'     : 'number of triggers this session'}),
-#    (pchtml.htmlTimestamp, {'name': 'lasttrigger', 'fallbackValue':0,
-#            'strft': '%H:%M:%S' , 'unset':'never',
-#            'onChange': ('dynamicUpdate','app'),
-#            'label': 'last trigger time',
-#            'shelp': 'time last triggered (rising edge) detected'}),
-
     (pchtml.htmlStartedTimeStamp, EMPTYDICT),
     (pchtml.htmlStoppedTimeStamp, EMPTYDICT),
 )
