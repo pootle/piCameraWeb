@@ -61,11 +61,17 @@ class cameraManager(papps.appManager):
         self['settings']['extmove']['run'].addNotify(self.extmotiondetect, 'user')
         self['settings']['extmove']['lasttrigger'].addNotify(self.movedetected, 'app')
         self['strmctrl']['camerastop'].addNotify(self.safeStopCamera,'user')
-        for actname in ('cpumove', 'tripvid', 'extmove'):
-            autovar = self['settings'][actname]['autostart']
-            if autovar.getValue('app')=='ON':
-                print('looks like I should start', actname)
-                self.addAlarm(func=self.flipActivity, runafter=3, actname=actname, start=True, **actstartparams[actname])
+        for actname in ('cpumove', 'tripvid', 'extmove', 'livevid'):
+            if actname in self['settings']:
+                actsettings=self['settings'][actname]
+                if 'autostart' in actsettings:
+                    autovar = actsettings['autostart']
+                    if autovar.getValue('app')=='ON':
+                        self.addAlarm(func=self.flipActivity, runafter=3, actname=actname, start=True, **actstartparams[actname])
+                if actname+'status' in self:
+                    autovar=actsettings['status']
+                    echovar=self[actname+'status']
+                    echovar.echoFrom(fieldFrom=autovar, triggerkey='app', readkey='webv', writekey='app')
         self.addAlarm(func=self.startActivity, runafter=1.5, actname='watcher', actclass=watcheract)
 
     def saveDefaultSettings(self):
@@ -247,8 +253,6 @@ class cameraManager(papps.appManager):
         if 'tripvid' in self.activities:
             act=self.activities['tripvid']
             act.trigger()
-        else:
-            print('piCamHandler: movedetected -vid not active')
 
     def safeStopCamera(self, var=None, view=None, oldValue=None, newValue=None):
         actives=[]

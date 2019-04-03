@@ -191,7 +191,7 @@ HTMLSTATUSSTRING={
     'name': 'status', 'fallbackValue': 'off',
     'onChange'  : ('dynamicUpdate','app'),
     'label'     : 'state',
-    'shelp'     : 'current status of this activity',
+    'shelp'     : 'current status of activity',
     'readersOn' : ('html', 'webv'),
     'writersOn' : ('app', 'pers')}
 

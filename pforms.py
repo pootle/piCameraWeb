@@ -250,6 +250,30 @@ class baseVar(ptree.treeob):
     def getAllViews(self):
         return self.app.allviews
 
+    def echoFrom(self, fieldFrom, triggerkey, readkey, writekey):
+        """
+        sets up this field to replicate the value of another field
+        
+        fieldFrom : the field this field will replicate
+        
+        triggerkey: key or list of read keys (see addNotify)
+        
+        readkey   : key used to read the field value
+        
+        
+        writekey  : key used to write the updated value into this field
+        """
+        self.notifyRead=readkey
+        self.notifyWrite=writekey
+        fieldFrom.addNotify(self._notifyUpdate, triggerkey)
+
+    def _notifyUpdate(self, var, view, newValue, oldValue):
+        """
+        function called when the value of another field changes (see echoFrom)
+        """
+        newv=var.getValue(self.notifyRead)
+        self.setValue(self.notifyWrite, newv)
+
     def _setVar(self, value):
         self.__lvvalue=value
 

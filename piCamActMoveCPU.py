@@ -67,6 +67,8 @@ class changedImage():
         self.setMask()
         self.setDifflog()
         self.buffers=buffers
+        self.hitcounts=[]
+        self.hclength=50
 
     def setMask(self):
         imgdata=fetchmask(self, self.vars)
@@ -107,6 +109,11 @@ class changedImage():
             self.diffToPng(self.workarray)
         numpy.copyto(self.workarray, imin)
         self.prevImage=True
+        if self.hclength > 0:
+            self.hitcounts.append(self.hitcount)
+            if len(self.hitcounts) >= self.hclength:
+                print('hitcounts are:', self.hitcounts)
+                self.hitcounts.clear()
         return found
 
     def setDifflog(self):
@@ -176,9 +183,11 @@ class ciActivity(papps.appThreadAct):
                 detect=self.engine.check(imx)
                 if detect:
                     self.vars['triggercount'].setValue('app',self.vars['triggercount'].getValue('app')+1)
-                    self.vars['lasttrigger'].setValue('app',time.time())
- #                   if self.loglvl <= logging.DEBUG:
- #                       logging.debug('it moved, hitcount {} from {}'.format(self.engine.hitcount, type(self.engine.hits).__name__))
+                    previous=self.vars['lasttrigger'].getValue('app')
+                    thistime=time.time()
+                    self.vars['lasttrigger'].setValue('app',thistime)
+                    if thistime-previous > 10  and self.loglvl <= logging.DEBUG:
+                        logging.debug('it moved, hitcount {} from {}'.format(self.engine.hitcount, type(self.engine.hits).__name__))
                 self.outQ.put(imx)
         self.endDeclare()
 
@@ -283,7 +292,7 @@ class mover(camSplitterAct,papps.appThreadAct):
                 self.log.IN==info('RAN OUT OF BUFFERS')
             self.printbufflog()
             raise StopIteration
-        if self.procCount % 300 == 0 and self.loglvl <= logging.DEBUG:
+        if self.procCount % 900 == 0 and self.loglvl <= logging.DEBUG:
             self.log.debug ('ticklog at {}, free buffers {}'.format(self.procCount, len(self.freebuffs)))
         return self.numpyBuffs[self.currentBuff]
 

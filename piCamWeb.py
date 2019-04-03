@@ -43,13 +43,14 @@ class piCamWeb(pch.cameraManager):
             writersOn=('pers',),
             loglvl=loglvl,
             **kwargs)
+        pagevars={n:v.getValue('html') for n,v in self.items()}
 
     def topPage(self):
         filepath=self.webserver.p_filepath(presetfolder='template', filepart='main.html')
         with filepath.open('r') as sfile:
             page=sfile.read()
         pagevars={n:v.getValue('html') for n,v in self.items()}
-        pf=page.format(**pagevars) #camstat=pagevars['camstatus']['cont'], 
+        pf=page.format(**pagevars)
         return pf, filepath.suffix
 
     def updateSetting(self, t, v):
@@ -215,12 +216,31 @@ def testcam2(**kwargs):
                 'writers':{'app':'_setValueDict'},
         }),
         (pchtml.htmlPlainString, {'name': 'camstatus', 'fallbackValue': 'off',
-                'onChange' : ('dynamicUpdate','app'),
-                'readersOn': ('app', 'html','webv'),
+                'onChange' : ('dynamicUpdate', 'app'),
+                'readersOn': ('app', 'html', 'webv'),
+                'writersOn': ('app', 'pers'),
+        }),
+        (pchtml.htmlStatus, {'name': 'cpumovestatus', 'fallbackValue': 'off',
+                'onChange' : ('dynamicUpdate', 'app'),
+                'readersOn': ('app', 'html', 'webv'),
+                'writersOn': ('app', 'pers'),
+        }),
+        (pchtml.htmlStatus, {'name': 'extmovestatus', 'fallbackValue': 'off',
+                'onChange' : ('dynamicUpdate', 'app'),
+                'readersOn': ('app', 'html', 'webv'),
+                'writersOn': ('app', 'pers'),
+        }),
+        (pchtml.htmlStatus, {'name': 'tripvidstatus', 'fallbackValue': 'off',
+                'onChange' : ('dynamicUpdate', 'app'),
+                'readersOn': ('app', 'html', 'webv'),
+                'writersOn': ('app', 'pers'),
+        }),
+        (pchtml.htmlStatus, {'name': 'livevidstatus', 'fallbackValue': 'off',
+                'onChange' : ('dynamicUpdate', 'app'),
+                'readersOn': ('app', 'html', 'webv'),
                 'writersOn': ('app', 'pers'),
         }),
     )
-    print("creating web camera handler with kwargs", kwargs)
     settingsfile=pathlib.Path('~/.picamsettings.txt').expanduser()
     settings={}
     if settingsfile.is_file():
