@@ -53,6 +53,35 @@ class piCamWeb(pch.cameraManager):
         pf=page.format(**pagevars)
         return pf, filepath.suffix
 
+    def smallpage(self):
+        filepath=self.webserver.p_filepath(presetfolder='template', filepart='small.html')
+        with filepath.open('r') as sfile:
+            page=sfile.read()
+        pagevars={n:v.getValue('html') for n,v in self.items()}
+        pf=page.format(**pagevars)
+        return pf, filepath.suffix
+
+    def settings(self,sname):
+        headings= {
+            'camsettings':  'Camera settings',
+            'livevid':      'Live stream settings',
+            'cpumove':      'cpu move detect settings',
+            'extmove':      'gpio trigger settings',
+            'tripvid':      'triggered video settings',
+            'listvid':      'list recorded videos',
+        }
+        if sname[0] in self['settings']:
+            filepath=self.webserver.p_filepath(presetfolder='template', filepart='singleset.html')
+            with filepath.open('r') as sfile:
+                page=sfile.read()
+            pagevars={'settings' : self['settings/'+sname[0]].getValue('html'), 'heading': headings[sname[0]]}
+            for set in ('camstatus','livevidstatus','cpumovestatus', 'extmovestatus','tripvidstatus'):
+                pagevars[set]=self[set].getValue('html')
+            pf=page.format(**pagevars)
+            return pf, filepath.suffix
+        else:
+            return {'resp':500, 'rmsg': 'cannot find settings for'+sname[0]}
+
     def updateSetting(self, t, v):
         """
         Called via the webserver from the web browser to update a single app variable and return a response

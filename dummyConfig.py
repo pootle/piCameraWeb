@@ -21,6 +21,8 @@ serverdef={
     'getpaths' : {          # paths to be handled by pywebhandler.do_GET for GETs
             'nocam.png'      : {'pagetype': 'static',      'pagefile': 'nocam.png'},
             'camweb.css'     : {'pagetype': 'static',      'pagefile': 'camweb.css'},
+            'tabgroup.css'   : {'pagetype': 'static',      'pagefile': 'tabgroup.css'},
+            'singletab.css'  : {'pagetype': 'static',      'pagefile': 'singletab.css'},
             'smoothie.js'    : {'pagetype': 'static',      'pagefile': 'smoothie.js'},
             'pipyscripts.js' : {'pagetype': 'static',      'pagefile': 'pipyscripts.js', 'log':0},
             'pimaskedit.js'  : {'pagetype': 'static',      'pagefile': 'pimaskedit.js'},
@@ -30,6 +32,8 @@ serverdef={
             'pistatus'       : {'pagetype': 'genstream',   'obid': 'pistat', 'period': 1.9},
             ''               : {'pagetype': 'appPage',     'obid': 'pootlecam', 'func': 'topPage'},
             'index.html'     : {'pagetype': 'appPage',     'obid': 'pootlecam', 'func': 'topPage'},
+            'settings.html'  : {'pagetype': 'appPage',     'obid': 'pootlecam', 'func': 'settings'},
+            'small.html'     : {'pagetype': 'appPage',     'obid': 'pootlecam', 'func': 'smallpage'},
             'vstream.mjpg'   : {'pagetype': 'vidstream',   'obid': 'pootlecam', 'func': 'startLiveStream'},
             'detstream.mjpg' : {'pagetype': 'vidstream',   'obid': 'pootlecam', 'func': 'startDetectStream'},
             'updateSetting'  : {'pagetype': 'datafunc',    'obid': 'pootlecam', 'func': 'updateSetting'},

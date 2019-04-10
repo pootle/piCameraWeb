@@ -43,7 +43,10 @@ class treeob(OrderedDict):
     def __getitem__(self, nname):
         splitname=nname.split('/')
         if len(splitname)==1:
-            return super().__getitem__(nname)
+            try:
+                return super().__getitem__(nname)
+            except KeyError:
+                raise KeyError('key %s not found in %s' % (nname, str(self.keys())))
         cnode=self
         for pname in splitname:
             if pname=='':
@@ -51,7 +54,10 @@ class treeob(OrderedDict):
             elif pname=='..':
                 cnode=cnode.parent
             else:
-                cnode=cnode.__getitem__(pname)
+                try:
+                    cnode=cnode.__getitem__(pname)
+                except KeyError:
+                    raise KeyError('key %s not found in %s' % (pname, str(cnode.keys())))
         return cnode
 
     hiernamesep='*'

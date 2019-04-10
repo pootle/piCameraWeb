@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+   <head>
+       <link rel="stylesheet" type="text/css" href="camweb.css">
+       <link rel="stylesheet" type="text/css" href="singletab.css">
+       <script src="smoothie.js"></script>
+       <script src="pipyscripts.js"></script>
+       <script src="newweb.js"></script>
+   </head>
+   <body>
+       <div id="header">
+           <table width="100%">
+               <tr><td rowspan="2"><h2>{heading:}</h2></td><td id="appstatus"></td></td></tr>
+               <tr><td id="appmessage">messages go here</td></tr>
+           </table>
+           <table>
+               <tr>
+                   <th><a href="settings.html?sname=camsettings" class="dlink" ><span class="status_head" >Camera</span></a></th>
+                   <th><a href="settings.html?sname=livevid" class="dlink" ><span class="status_head" >live video</span></a></th>
+                   <th><a href="settings.html?sname=cpumove" class="dlink" ><span class="status_head" >cpu move</span></a></th>
+                   <th><a href="settings.html?sname=extmove" class="dlink" ><span class="status_head" >gpio move</span></a></th>
+                   <th><a href="settings.html?sname=tripvid" class="dlink" ><span class="status_head" >triggered video</span></a></th>
+                   <th><a href="settings.html?sname=listvid" class="dlink" ><span class="status_head" >video list</span></a></th>
+               </tr>
+               <tr>
+                   <td style="text-align: center;">{camstatus[cont]:}</td>
+                   <td style="text-align: center;">{livevidstatus[cont]:}</td>
+                   <td style="text-align: center;">{cpumovestatus[cont]:}</td>
+                   <td style="text-align: center;">{extmovestatus[cont]:}</td>
+                   <td style="text-align: center;">{tripvidstatus[cont]:}</td>
+               </tr>
+               <tr>
+                   <td>
+                        <span class="intlink" href="setdefaults" title="use current settings as defaults on startup" onclick="inpageAction('setdefaults')">
+                            save defaults</span>
+                   </td>
+               </tr>
+           </table>
+       </div>
+       <div class="tabby">
+       {settings:}
+       </div>
+   </body>
+</html>

@@ -1,0 +1,79 @@
+.tabwrap{
+    min-width: 720px;
+    float: left;
+}
+
+.tabby{
+    
+}
+
+.tabby > input{
+  display : none;
+}
+
+.tabby > section > h1{
+  float       : left;
+  box-sizing  : border-box;
+  margin      : 0;
+  padding     : 0.5em 0.5em 0;
+  overflow    : hidden;
+  font-size   : 133%;
+  font-weight : normal;
+}
+
+.tabby > input:first-child + section > h1{
+  padding-left : 1em;
+}
+
+.tabby > section > h1{
+  border                  : 1px solid #ddd;
+  border-bottom           : none;
+  border-top-left-radius  : 4px;
+  border-top-right-radius : 4px;
+  width                   : 2.6em;
+  height                  : 7em;
+  padding                 : 0.25em 0.75em;
+  margin                  : 0.25em;
+  cursor                  : pointer;
+}
+
+.tabby > section > h1 > label{
+  display                 : block;
+  box-shadow              : 0 0 0.5em rgba(0,0,0,0.0625);
+  background              : hsl(9,45%,23%);
+  text-align              : right;
+  cursor                  : pointer;
+     -moz-user-select     : none;
+      -ms-user-select     : none;
+  -webkit-user-select     : none;
+  -webkit-transform: rotate(90deg);  /* Chrome, Opera 15+, Safari 3.1+ */
+      -ms-transform: rotate(90deg);  /* IE 9 */
+          transform: rotate(90deg);  /* Firefox 16+, IE 10+, Opera */
+}
+
+.tabby > section > div{
+  position      : relative;
+  z-index       : 1;
+  float         : right;
+  box-sizing    : border-box;
+  width         : 100%;
+  margin        : 9.5em 0 0 -100%;
+  padding       : 0.5em 0.75em;
+  border        : 1px solid #ddd;
+  border-radius : 4px;
+  box-shadow    : 0 0 0.5em rgba(0,0,0,0.0625);
+  background    : hsl(9,45%,23%);
+}
+
+.tabby > input:checked + section > h1{
+  position : relative;
+  z-index  : 2;
+  font-weight: bold;
+}
+
+.tabby > input:not(:checked) + section > div{
+  display : none;
+}
+.aftertabby {
+    float: left;   
+}

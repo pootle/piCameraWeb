@@ -19,7 +19,7 @@ class triggeredVideo(camSplitterAct, papps.appThreadAct):
     Trigger recording by calling the member function trigger from any thread
     """
     def __init__(self, **kwargs):
-        self.lasttrigger=0
+        self.lasttrigtime=0
         super().__init__(**kwargs)
         self.vars['triggercount'].setValue('app',0)
 
@@ -31,7 +31,7 @@ class triggeredVideo(camSplitterAct, papps.appThreadAct):
         return 'triggeredVideo ends, {} video files recorded'.format(str(self.vars['triggercount'].getValue('app')))
 
     def trigger(self):
-        self.lasttrigger=time.time()
+        self.lasttrigtime=time.time()
 
     def innerrun(self):
         self.startDeclare()
@@ -43,9 +43,8 @@ class triggeredVideo(camSplitterAct, papps.appThreadAct):
             self.log.info("start_recording with size {}".format(str(rs)))            
         while self.requstate != 'stop':
             picam.wait_recording(.3, splitter_port=self.sPort)
-            if self.lasttrigger+self.vars['forwardtime'].getValue('app')>time.time():
+            if self.lasttrigtime>0:
                 self.updateState('recording')
-#                self.summarystate='recording'
                 self.vars['triggercount'].setValue('app',self.vars['triggercount'].getValue('app')+1)
                 self.vars['lasttrigger'].setValue('app', time.time())
                 tnow=datetime.datetime.now()
@@ -56,15 +55,13 @@ class triggeredVideo(camSplitterAct, papps.appThreadAct):
                 picam.split_recording(str(afile), splitter_port=self.sPort)
                 circstream.copy_to(str(bfile), seconds=self.vars['backtime'].getValue('app'))
                 circstream.clear()
-                if self.loglvl <= logging.DEBUG:
-                    lstr='recording to {}, pre-time: {}, post time {}.'.format(str(tfile), 
-                                                    self.vars['backtime'].getValue('app'), self.vars['forwardtime'].getValue('app'))
-                    self.log.debug(lstr)
-                while self.requstate=='run' and self.lasttrigger+self.vars['forwardtime'].getValue('app') > time.time():
+                while self.requstate=='run' and self.lasttrigtime+self.vars['forwardtime'].getValue('app') > time.time():
                     picam.wait_recording(.5, splitter_port=self.sPort)
+                self.lasttrigtime=0
                 if self.loglvl <= logging.DEBUG:
-                    self.log.debug('done recording')
-#                self.summaryState='waiting'
+                    lstr='recording to {}, pre-time: {}, post time {}. started at {}, prefile size {}'.format(str(tfile), 
+                                        self.vars['backtime'].getValue('app'), self.vars['forwardtime'].getValue('app'),tnow.strftime('HH:MM:SS'), bfile.stat().st_size)
+                    self.log.debug(lstr)
                 picam.split_recording(circstream, splitter_port=self.sPort)
                 if bfile.stat().st_size == 0:
                     cmd=['MP4Box', '-quiet', '-add', str(afile), str(tfile)]
