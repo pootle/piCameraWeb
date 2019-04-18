@@ -30,7 +30,7 @@ from piCamActWatcher import watcher as watcheract
 actstartparams={
     'cpumove' : {'actclass': cpumover, 'withport': True},
     'extmove' : {'actclass': externalmover, 'withport': False},
-    'tripvid' : {'actclass': triggeredVideo, 'withport': True},
+    'tripvid' : {'actclass': triggeredVideo, 'withport': False}, # tripvid allocates internally
 }
 
 class cameraManager(papps.appManager):
@@ -55,7 +55,8 @@ class cameraManager(papps.appManager):
             super().__init__(name='camera', **kwargs)
         logging.info('closing camera after setup')
         self.picam=None
-        self['settings']['tripvid']['run'].addNotify(self.videotrigger, 'user')
+        self['settings/tripvid/run'].addNotify(self.videotrigger, 'user')
+        self['settings/tripvid/triggernow'].addNotify(self.movedetected, 'user')
         self['settings']['cpumove']['run'].addNotify(self.cpumotiondetect, 'user')
         self['settings']['cpumove']['lasttrigger'].addNotify(self.movedetected, 'app')
         self['settings']['extmove']['run'].addNotify(self.extmotiondetect, 'user')
@@ -105,6 +106,7 @@ class cameraManager(papps.appManager):
                         self.camType, self['settings']['camsettings']['framerate'].getValue('pers'), self['settings']['camsettings']['resolution'].getValue('pers')))
         elif self.loglvl <= logging.INFO:
             self.log.info("start ignored - camera already active")
+        return self.picam
 
     def stopCamera(self):
         """
@@ -142,8 +144,24 @@ class cameraManager(papps.appManager):
         if self.loglvl <= logging.INFO:
             self.log.info("cameraManager runloop all streams closed, time to exit.")
 
+    def _getSplitterPort(self, activity):
+        """
+        finds the next free camera port and allocates it, returning the number, None if none free
+        """
+        self.camlock.acquire()
+        try:
+            sport=self.camStreams.index(None)
+            self.camStreams[sport]=activity
+            self.camlock.release()
+            return sport
+        except:
+            self.camlock.release()
+            return None
+
     def _releaseSplitterPort(self, activity, sPort):
+        self.camlock.acquire()
         if self.camStreams[sPort]==activity:
+            self.camlock.release()
             self.camStreams[sPort]=None
             alldone=True
             for act in self.camStreams:
@@ -153,11 +171,12 @@ class cameraManager(papps.appManager):
             if self.loglvl <= logging.DEBUG:
                 self.log.debug('releases port {} - previously used by {}'.format(sPort, activity.name))
         else:
+            self.camlock.release()
             raise RuntimeError('release splitter port inconsistent info for activity {}'.format(activity.name))
 
     def startPortActivity(self, actname, actclass):
         """
-        Attempts to start an activity that requires a camera port.
+        Attempts to start an activity that requires a camera port full time.
         
         First starts the camera if it is not running.
         
@@ -166,13 +185,8 @@ class cameraManager(papps.appManager):
         """
         if self.picam is None:
             self.startCamera()
-        self.camlock.acquire()
-        try:
-            sport=self.camStreams.index(None)
-            self.camStreams[sport]=0
-            self.camlock.release()
-        except:
-            self.camlock.release()
+        sport=self._getSplitterPort(0)
+        if sport is None:
             if self.loglvl <= logging.WARN:
                 self.log.warn("unable to start {} - no free splitter ports".format(actname))
             return None
@@ -241,7 +255,7 @@ class cameraManager(papps.appManager):
                 self.startActivity(actname=actname, actclass=actclass)
 
     def videotrigger(self, var=None, view=None, oldValue=None, newValue=None):
-        self.flipActivity('tripvid', triggeredVideo, True)
+        self.flipActivity('tripvid', triggeredVideo, False)
 
     def cpumotiondetect(self, var=None, view=None, oldValue=None, newValue=None):
         self.flipActivity('cpumove', cpumover, True)

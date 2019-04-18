@@ -70,7 +70,6 @@ class externalmover(papps.appThreadAct):
                 if self.vars['lasttrigger'].getValue('app')+1 < tnow:
                     self.vars['lasttrigger'].setValue('app', tnow)
         self.callbackref.cancel()
-#        self.summaryState='closing'
         self.endDeclare()
 
 ############################################################################################
