@@ -208,7 +208,8 @@ class htmlInt(htmlgenNumber, pforms.intervalVar):
     """
     generic html int var
     """
-    pass
+    def __init__(self, asint=True, **kwargs):
+        super().__init__(asint=asint, **kwargs)
 
 class htmlChoice(htmlgenOption, pforms.listVar):
     """

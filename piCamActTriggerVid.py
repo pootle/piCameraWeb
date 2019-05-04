@@ -14,11 +14,11 @@ from piCamSplitter import camSplitterAct
 
 class triggeredVideo(papps.appThreadAct):
     """
-    This class records video when triggered. It can run a permanent video stream to a circular buffer. When triggered#
+    This class records video when triggered. It can run a permanent video stream to a circular buffer. When triggered
     it then writes a video file with the previous few seconds followed by the video of the following time the trigger is active.
     
     Alternatively it will only start recording when triggered. This saves power (and where ir leds are used, a lot of power
-    can be saved by using and external triggr such as a pir.
+    can be saved by using an external trigger such as a pir.
     
     Trigger recording by calling the member function trigger from any thread. This adds an entry to a simple queue, which triggers 
     recordings.
@@ -111,6 +111,7 @@ class triggeredVideo(papps.appThreadAct):
                             print('MP4Box stderr:')
                             print('   ', errs)
                     self.parent._releaseSplitterPort(self, self.sPort)
+                    self.sPort=None
                     self.updateState('run')
 
     def circbuffrun(self):
@@ -188,6 +189,7 @@ class triggeredVideo(papps.appThreadAct):
         picam.stop_recording(splitter_port=self.sPort)
         time.sleep(.1)
         self.parent._releaseSplitterPort(self, self.sPort)
+        self.sPort=None
 
     def innerrun(self):
         self.startDeclare()
