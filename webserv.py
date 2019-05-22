@@ -361,7 +361,7 @@ class ThreadedHTTPServer(ThreadingMixIn, http.server.HTTPServer):
         else:
             smsg='no associated objects created'
         if self.loglvl <= logging.INFO:
-            self.log.info(smsg+ 'loglvl is' + self.loglvl)
+            self.log.info('%s loglvl is %d' % (smsg, self.loglvl))
         self.validateConfig()           # does some setup as well
         
 
