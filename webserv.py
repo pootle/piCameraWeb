@@ -291,16 +291,15 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                             dupd=json.dumps(self.server.getUpdatesSince(lasttime))
                             try:
                                 self.wfile.write(('data: %s\n\n' % dupd).encode('utf-8'))
-                                print('webserv sends updates', dupd)
+                                if self.server.loglvl <= logging.DEBUG:
+                                    self.server.log.debug('webserver sends updates ' + str(dupd))
                             except Exception as e:
-                                print('webserv sends updates FAILS', dupd)
+                                if self.server.loglvl <= logging.DEBUG:
+                                    self.server.log.debug('webserver updates FAILS ' + str(dupd))
                                 running=False
                                 if e.errno!=errno.EPIPE:
                                     self.server.stopDynUpdates()
                                     raise
-                                else:
-                                    print(type(e).__name__)
-                                    print('dynamic updates finished')
                             lasttime=tickat
                         elif tickat > lasttime+8:
                             lasttime=tickat
@@ -312,11 +311,6 @@ class pywebhandler(http.server.BaseHTTPRequestHandler):
                                 if e.errno!=errno.EPIPE:
                                     self.server.stopDynUpdates()
                                     raise
-                                else:
-                                    print(type(e).__name__)
-                                    print(e)
-                                    print('dynamic updates finished')
-                                    return
                     self.server.stopDynUpdates()            
                 else:
                     self.send_error(405,'no dynamic update stream')
@@ -367,7 +361,7 @@ class ThreadedHTTPServer(ThreadingMixIn, http.server.HTTPServer):
         else:
             smsg='no associated objects created'
         if self.loglvl <= logging.INFO:
-            self.log.info(smsg)
+            self.log.info(smsg+ 'loglvl is' + self.loglvl)
         self.validateConfig()           # does some setup as well
         
 

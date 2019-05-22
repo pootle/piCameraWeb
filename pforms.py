@@ -390,13 +390,10 @@ class intervalVar(numVar):
 
     def _validNum(self, view, value):
         if self.asint:
-            if isinstance(value,float):
-                fval=value
-            else:
-                try:
-                    fval=int(value)
-                except ValueError:
-                    fval=round(float(value))
+            try:
+                fval=int(value)
+            except ValueError:
+                fval=round(float(value))
         else:
             fval=float(value)
         if self.interval is 1 and self.asint:                                 # 'cos in Python there is only 1 1. For just an int, an easier test is done

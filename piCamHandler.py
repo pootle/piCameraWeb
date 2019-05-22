@@ -29,7 +29,7 @@ from piCamActWatcher import watcher as watcheract
 
 actstartparams={
     'cpumove' : {'actclass': cpumover, 'withport': True},
-    'extmove' : {'actclass': externalmover, 'withport': False},
+    'extmove' : {'actclass': externalmover, 'withport': False, 'loglvl': 10},
     'tripvid' : {'actclass': triggeredVideo, 'withport': False}, # tripvid allocates internally
 }
 
@@ -57,11 +57,11 @@ class cameraManager(papps.appManager):
         self.picam=None
         self['settings/tripvid/run'].addNotify(self.videotrigger, 'user')
         self['settings/tripvid/triggernow'].addNotify(self.movedetected, 'user')
-        self['settings']['cpumove']['run'].addNotify(self.cpumotiondetect, 'user')
-        self['settings']['cpumove']['lasttrigger'].addNotify(self.movedetected, 'app')
-        self['settings']['extmove']['run'].addNotify(self.extmotiondetect, 'user')
-        self['settings']['extmove']['lasttrigger'].addNotify(self.movedetected, 'app')
-        self['strmctrl']['camerastop'].addNotify(self.safeStopCamera,'user')
+        self['settings/cpumove/run'].addNotify(self.cpumotiondetect, 'user')
+        self['settings/cpumove/lasttrigger'].addNotify(self.movedetected, 'app')
+        self['settings/extmove/run'].addNotify(self.extmotiondetect, 'user')
+        self['settings/extmove/lasttrigger'].addNotify(self.movedetected, 'app')
+        self['strmctrl/camerastop'].addNotify(self.safeStopCamera,'user')
         for actname in ('cpumove', 'tripvid', 'extmove', 'livevid'):
             if actname in self['settings']:
                 actsettings=self['settings'][actname]
@@ -232,7 +232,7 @@ class cameraManager(papps.appManager):
             if act.usecount <= 0:
                 act.requestFinish()
 
-    def flipActivity(self, actname, actclass, withport, start=None):
+    def flipActivity(self, actname, withport, start=None, **kwargs):
         """
         starts and stops activities on demand
         
@@ -250,18 +250,18 @@ class cameraManager(papps.appManager):
             self.activities[actname].requestFinish()
         elif not actname in self.activities and not start is False:
             if withport:
-                self.startPortActivity(actname=actname, actclass=actclass)
+                self.startPortActivity(actname=actname, **kwargs)
             else:
-                self.startActivity(actname=actname, actclass=actclass)
+                self.startActivity(actname=actname, **kwargs)
 
     def videotrigger(self, var=None, view=None, oldValue=None, newValue=None):
-        self.flipActivity('tripvid', triggeredVideo, False)
+        self.flipActivity('tripvid', **actstartparams['tripvid'])
 
     def cpumotiondetect(self, var=None, view=None, oldValue=None, newValue=None):
-        self.flipActivity('cpumove', cpumover, True)
+        self.flipActivity('cpumove', **actstartparams['cpumove'])
 
     def extmotiondetect(self, var=None,  view=None, oldValue=None, newValue=None):
-        self.flipActivity('extmove', externalmover, False)
+        self.flipActivity('extmove', **actstartparams['extmove'])
 
     def movedetected(self, var=None, view=None, oldValue=None, newValue=None):
         if 'tripvid' in self.activities:

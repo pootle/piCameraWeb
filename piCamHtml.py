@@ -446,15 +446,20 @@ class folderVar2(pforms.baseVar):
             self._setVar(v)
         except:
             v=None
+        usedfallback=False
         if v is None:
             v=pathlib.Path(fallbackValue).expanduser()
+            usedfallback=True
         if v.exists():
             if not (v.is_dir() or v.is_file()):
                 raise ValueError('path {} is not a file or folder'.format(str(v)))
         elif self.allowcreate:
             v.mkdir(parents=True)
+        elif usedfallback:
+            raise ValueError('path {} for var does not refer to an existing file or folder'.format(str(v)))
         else:
-            raise ValueError('path {} does not refer to an existing file or folder'.format(str(v)))
+            self.setInitialValue(view=view, value=None, fallbackValue=fallbackValue)
+            return
         self._setVar(v)
 
     def getFile(self):

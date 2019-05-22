@@ -66,7 +66,7 @@ class externalmover(papps.appThreadAct):
         while self.requstate != 'stop':
             time.sleep(1)
             if self.triggered:
-                tnow=time.time()
+                tnow=time.time()    # keep triggering every second until input goes low
                 if self.vars['lasttrigger'].getValue('app')+1 < tnow:
                     self.vars['lasttrigger'].setValue('app', tnow)
         self.callbackref.cancel()
@@ -86,7 +86,7 @@ extmovetable=(
             'readersOn' : ('html', 'app', 'pers'),
             'writersOn' : ('app', 'pers', 'user'),            
             'label'     : 'gpio pin',
-            'shelp'     : 'broadcom pin number for external sensor'}),
+            'shelp'     : 'broadcom pin number for external sensor', 'loglvl':10}),
     (pchtml.htmlCyclicButton, {
             'name' : 'run',  'fallbackValue': 'start now', 'alist': ('start now', 'stop now '),
             'onChange'  : ('dynamicUpdate','user'),
