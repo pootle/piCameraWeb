@@ -20,7 +20,7 @@ class treeob(OrderedDict):
     """
     A class that places an object within a tree. Each node is basically a dict (empty for leaf nodes)
     """
-    def __init__(self, *, name, parent, app): # * forces all args to be used as keywords
+    def __init__(self, *, name, parent, app, childdefs=None): # * forces all args to be used as keywords
         """
         Creates a node and links it from the parent (if present)
 
@@ -31,14 +31,26 @@ class treeob(OrderedDict):
         app         : the top parent (root node) of the tree, can hold various tree constant info, None only
                       for the root node itself.
         
+        childdefs   : iterable of definitions for child nodes, each to be the kwargs for calling makeChild
+
         raises ValueError is the parent already has a child with this name, or if the name is not Hashable
         """
         assert isinstance(name, Hashable), 'the name given for variable {} is not hashable'.format(name)
         self.name=name
         self.parent=parent
         self.app=app
+        super().__init__()
         if not parent is None:
             parent[self.name]=self
+        if not childdefs is None:
+            for cdef in childdefs:
+                self.makeChild(**cdef)
+   
+    def makeChild(self, _cclass, **kwargs):
+        """
+        default makeChild creates a child with parent and app defined automatically.
+        """
+        return _cclass(parent=self, app=self.app, **kwargs)
 
     def __getitem__(self, nname):
         splitname=nname.split('/')

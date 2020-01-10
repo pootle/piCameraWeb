@@ -9,6 +9,10 @@ import papps
 import piCamHtml as pchtml
 
 class externalmover(papps.appThreadAct):
+    """
+    An activity that monitors a GPIO pin and upates a var when the gpio pin goes true. It repeats the trigger
+    every second while the pin remains true. 
+    """
     def __init__(self, **kwargs):
         self.gph=pigpio.pi()
         if not self.gph.connected:
@@ -35,15 +39,19 @@ class externalmover(papps.appThreadAct):
         self.lastedgetime=tnow
 
     def trigger(self, pin, level, tick):
+        """
+        Function called by pigpio whenever an edge is detected on the input pin
+        """
+        detect=level==0 if self.vars['lasttrigger'].getValue('app')=='low ' else level==1
         if self.triggered:
-            if level==0:
-                self.triggered=False
-                self.reportstatetime(level)
-            else:
+            if detect:
                 if self.loglvl <= logging.DEBUG:
                     self.log.debug('unexpected trigger to high when triggered')
+            else:
+                self.triggered=False
+                self.reportstatetime(level)
         else:
-            if level==1:
+            if detect:
                 self.triggered=True
                 self.vars['triggercount'].setValue('app', self.vars['triggercount'].getValue('app')+1)
                 tnow=time.time()
@@ -87,6 +95,12 @@ extmovetable=(
             'writersOn' : ('app', 'pers', 'user'),            
             'label'     : 'gpio pin',
             'shelp'     : 'broadcom pin number for external sensor', 'loglvl':10}),
+    (pchtml.htmlCyclicButton, {
+            'name' : 'hightrue',  'fallbackValue': 'high', 'alist': ('high', 'low '),
+            'onChange'  : ('dynamicUpdate','user'),
+            'label': 'trigger level', 
+            'shelp': 'if true triggers on logic high, else triggers on logic low',
+    }),
     (pchtml.htmlCyclicButton, {
             'name' : 'run',  'fallbackValue': 'start now', 'alist': ('start now', 'stop now '),
             'onChange'  : ('dynamicUpdate','user'),
