@@ -1,3 +1,4 @@
+
 var maskxstep;
 var maskystep;
 var celldownx;
@@ -14,65 +15,96 @@ var maskadd=true;
 
 var detectmask=null;
 
-var maskwidth=64;
-var maskheight=48;
+var maskwidth=0;
+var maskheight=0;
 
-function editmaskstart(thisel) {
-    if (thisel.innerHTML =='edit mask') {
-        var oReq = new XMLHttpRequest();
-        oReq.addEventListener("load", function () {
-            var newval=JSON.parse(this.response);
-            reportMessage(newval.msg);
-            if ("mdata" in newval) {
-                detectmask=newval.mdata
-                doeditmask();
+var maskname=null;
+
+function maskeditflip(btnel) {
+    if (btnel.innerHTML =='edit mask') {
+        btnel.innerHTML="fetching mask";
+        if (confirm('edit current mask? (cancel to start new mask)')) {
+            ff="fetchmask?t=old"
+        } else {
+            ff="fetchmask?t=new"
+        }
+        fetchmask(btnel, ff)
+    } else if (btnel.innerHTML =='fetching mask') {
+        // do nothing
+    } else if (btnel.innerHTML=='finish edit') {
+        var mn = maskname;
+        if (mn==null) {
+            mn='default';
+        }
+        var saveas=prompt("save changes as?", mn);
+        if (saveas == null) {
+            btnel.innerHTML ='edit mask'
+            var mdiv=document.getElementById("livemaskdiv")
+            mdiv.style.display="none";
+        } else {
+            btnel.innerHTML="saving mask";
+            savemask(btnel, saveas)
+        }
+    } else if (btnel.innerHTML=='saving mask') {
+        // do nothing
+    } else {
+         alert('ooops! ' +  btnel.innerHTML)
+    }
+}
+
+async function fetchmask(btnel, ff) {
+    let response = await fetch(ff);
+    if (response.ok) { // if HTTP-status is 200-299
+        let maskinf = await response.json();
+        if ("width" in maskinf) {
+            btnel.innerHTML="finish edit";
+            maskwidth=maskinf['width'];
+            maskheight=maskinf['height'];
+            if ('mask' in maskinf) {
+                detectmask=maskinf['mask'];
             } else {
                 detectmask=[];
                 for (var i=0;i<maskheight;i++) {
                     detectmask[i] = Array(maskwidth).fill(0);
                 }
-                doeditmask();
             }
-        });
-        oReq.addEventListener("error", function() {
-            reportMessage('edit mask request failed')
-        });
-        oReq.addEventListener("abort", function() {
-            reportMessage('edit mask request aborted')
-        });
-        oReq.open("GET", "fetchmask");
-        oReq.send();
-    } else {
-        thisel.innerHTML = 'edit mask';
-        var saveas=prompt("save changes as?");
-        if (saveas != null && saveas != "") {
-            var req = new XMLHttpRequest();
-            req.open("POST", 'setdetectmask');
-            req.addEventListener("load", function () {
-                reportMessage(this.responseText)
-            });
-            req.addEventListener("error", function() {
-                reportMessage('request failed')
-            });
-            req.addEventListener("abort", function() {
-                reportMessage('request aborted')
-            });
-            req.setRequestHeader('Content-Type', 'application/json');
-            req.send(JSON.stringify({
-                'name': saveas,
-                'mask': detectmask
-            }));
+            if ('name' in maskinf) {
+                maskname=maskinf['name']
+            } else {
+                maskname=null;
+            }
+            starteditmask();
+        } else {
+            alert('something wrong')
+            btnel.innerHTML= "edit mask";
         }
-        var mdiv=document.getElementById("livemaskdiv");
-        mdiv.style.display="none";
-        detectmask=null;
-        maskcontext=null;
+    } else {
+        alert("HTTP-Error: " + response.status);
+        btnel.innerHTML="edit mask";
     }
 }
 
-function doeditmask() {
-    var thisel=document.getElementById('editmaskbtn')
-    thisel.innerHTML = 'finish edit';
+async function savemask(btnel, saveas) {
+    let response = await fetch('savemask', {
+        headers: {'Content-Type': 'application/json;charset=utf-8'},
+        method: 'POST',
+        body: JSON.stringify({
+            'name': saveas,
+            'mask': detectmask
+            })
+        });
+    if (response.ok) {
+        let result = await response.json();
+        alert(result.message);
+    } else {
+        alert("HTTP-Error: " + response.status);
+    }   
+    var mdiv=document.getElementById("livemaskdiv")
+    mdiv.style.display="none";
+    btnel.innerHTML ='edit mask'
+}
+
+function starteditmask() {
     var mdiv=document.getElementById("livemaskdiv")
     mdiv.style.display="block";
     var cstyle=getComputedStyle(mdiv);

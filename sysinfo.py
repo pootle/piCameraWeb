@@ -1,34 +1,7 @@
 #!/usr/bin/python3
-"""
-basic functions to check on various aspects of machine state and other utilities
-"""
-import os, time, socket
 
-from importlib import import_module as modimporter
+import time, os
 
-def findMyIp(wait=10):
-    """
-    A noddy function to find local machines' IP address for simple cases....
-    based on info from https://stackoverflow.com/questions/166506/finding-local-ip-addresses-using-pythons-stdlib
-    
-    returns an array of IP addresses (in simple / most cases there will only be one entry)
-    
-    wait: if not None will wait at most this number of seconds for network to become available
-    """
-    waittill = time.time() if wait is None else time.time()+wait
-    while True:
-        try:
-            return([ip for ip in socket.gethostbyname_ex(socket.gethostname())[2] if not ip.startswith("127.")] or 
-                    [[(s.connect(("8.8.8.8", 53)), s.getsockname()[0], s.close()) for s in [socket.socket(socket.AF_INET, socket.SOCK_DGRAM)]][0][1]]
-                  )
-        except OSError:
-            if time.time() > waittill:
-                print("network not available - timeout after %2.1f seconds" % wait)
-                return []
-            else:
-                print('waiting for network')
-                time.sleep(.5)
-                
 def _tempfield(tempfilename):
     with open(tempfilename) as cput: #'/sys/class/thermal/thermal_zone0/temp'
         return int(cput.readline().strip())/1000
@@ -75,6 +48,7 @@ class systeminfo():
             cputemp     the current cpu temerature in centigrade
 
         """
+        global listall
         self.proclist=[]    # the list of things we'll call 
         self.cpustatlist=[] # the list of specifically /proc/stat fields we want
         if isinstance(fields, str):
@@ -97,6 +71,13 @@ class systeminfo():
             self.newprocstats=[int(e) for e in li.rstrip().split(' ')[1:] if e != '']
             self.newproctime=time.time()
             self.jiffy = os.sysconf(os.sysconf_names['SC_CLK_TCK'])
+        self.running=True
+        listall.append(self)
+
+    def close(self):
+        global listall
+        self.running=False
+        listall.remove(self)
 
     def addfield(self,field):
         assert field in cpustatfields, 'unrecognized fields param <%s>' % field
@@ -111,22 +92,25 @@ class systeminfo():
             x=17/0
 
     def __next__(self):
-        if self.cpustatlist:
-            with open('/proc/stat') as cpuinf:
-                li=cpuinf.readline()
-                while not li.startswith('cpu '):
+        if self.running:
+            if self.cpustatlist:
+                with open('/proc/stat') as cpuinf:
                     li=cpuinf.readline()
-            self.prevprocstats=self.newprocstats
-            now=time.time()
-            self.elapsed=now-self.newproctime
-            self.newproctime=now
-            self.newprocstats=[int(e) for e in li.rstrip().split(' ')[1:] if e != '']
-        if self.resdict is None:
-            return self.proclist[0][0](*self.proclist[0][1])
+                    while not li.startswith('cpu '):
+                        li=cpuinf.readline()
+                self.prevprocstats=self.newprocstats
+                now=time.time()
+                self.elapsed=now-self.newproctime
+                self.newproctime=now
+                self.newprocstats=[int(e) for e in li.rstrip().split(' ')[1:] if e != '']
+            if self.resdict is None:
+                return self.proclist[0][0](*self.proclist[0][1])
+            else:
+                for pl in self.proclist:
+                    self.resdict[pl[2]] = pl[0](*pl[1])
+                return self.resdict
         else:
-            for pl in self.proclist:
-                self.resdict[pl[2]] = pl[0](*pl[1])
-            return self.resdict
+            raise StopIteration()
 
     def getprocfield(self, index):
         useind=3 if index > 20 else index
@@ -134,29 +118,8 @@ class systeminfo():
         val=increment/self.elapsed/self.jiffy/self.cpucount
         return val if index <=20 else 1-val
 
-def makeClassInstance(className, **kwargs):
-    """
-    creates an instance of the class identified by the hierarchic name, with other parameters
-    
-    className:  The hierarchic name for the required class - e.g. 'modulename.classname'
-    
-    **kwargs : all the other arguments required by the constructor
-    """
-    components = className.split('.')
-    assert len(components) > 1, "className %s is not of form <modname>.<classname>" % className
-    try:
-        mod = modimporter(components[0])
-    except ImportError:
-        print("FAILED to import module %s for className %s" % (str(components[0]), str(className)))
-        raise
-    for comp in components[1:]:
-        try:
-            mod = getattr(mod, comp)
-        except AttributeError:
-            print('FAILED to find %s in %s from className %s' % (str(comp), str(mod), str(className) ))
-            raise
-    try:
-        return mod(**kwargs)
-    except:
-        print('FAILED constructor call on %s with parameters %s' % (str(mod), str(kwargs)))
-        raise
+listall=[]
+
+def closeall():
+    for ob in listall.copy():
+        ob.close()

@@ -5,7 +5,7 @@ I wrote this program initially as a way of both learning more Python and finding
 a Raspberry Pi Zero. I found existing packages like Motion ( / motioneye) and RPi Cam Web Interface rather frustrating 
 for various reasons, so I've spent some time making this into a viable application / package in its own right.
 
-This software is still a work in progress and should be regarded as alpha / experimental at the moment.
+This software is still a work in progress and should be regarded as beta at the moment.
 
 The camera driving software exclusively uses the raspberry pi python interface, and uses the splitter port capability to
 enable (up to) 4 different camera streams to run in parallel, exploiting the GPU as much as possible to improve performance.
@@ -28,5 +28,6 @@ A simple eay to use an external motion detector (such as a PIR module connected 
 
 A video recorder that creates a video when triggered with a few seconds of video before and after the trigger
 
+Note that after an extensive update to improve the software, the docs are somewhat out of date temorarily.
 
 [More documentaton is available here.](https://picamdocs.readthedocs.io/en/latest/)
