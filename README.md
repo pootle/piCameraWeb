@@ -46,6 +46,11 @@ Install the utils into the standard python package location
 
 > sudo python3 setup.py install
 
+Then do the setup for the camera app:
+> cd piCameraWeb/setup
+
+> sudo ./setup.sh
+
 Check the camera is OK:
 > vcgencmd get_camera
 
