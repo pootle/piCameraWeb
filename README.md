@@ -26,8 +26,34 @@ A simple motion detection system based of difference between successive frames
 
 A simple eay to use an external motion detector (such as a PIR module connected via a GPIO port
 
-A video recorder that creates a video when triggered with a few seconds of video before and after the trigger
+A video recorder that creates a video when triggered with (optionally) a few seconds of video before and after the trigger
 
 Note that after an extensive update to improve the software, the docs are somewhat out of date temorarily.
+
+## installation instructions
+These instructions work on a clean new build of raspbian (any variety - I usually use Raspbian Lite).
+
+Install git:
+> sudo apt install git
+
+Clone the utilities repository and this repository from github:
+> git clone https://github.com/pootle/pootles_utils.git
+> git clone https://github.com/pootle/piCameraWeb.git
+
+Install the utils into the standard python package location
+> cd pootles_utils/setup
+> sudo python3 setup.py install
+
+Check the camera is OK:
+> vcgencmd get_camera
+this will return ‘supported=1 ‘detected=1’ if the camera is enabled and a camera is detected.
+
+## test run the software
+
+You can run the web server with:
+> python3 webserv.py -c testconfig.py
+
+This will display the useful bit of the url which can use use on any local machine to access the app.
+
 
 [More documentaton is available here.](https://picamdocs.readthedocs.io/en/latest/)
