@@ -38,14 +38,17 @@ Install git:
 
 Clone the utilities repository and this repository from github:
 > git clone https://github.com/pootle/pootles_utils.git
+
 > git clone https://github.com/pootle/piCameraWeb.git
 
 Install the utils into the standard python package location
 > cd pootles_utils/setup
+
 > sudo python3 setup.py install
 
 Check the camera is OK:
 > vcgencmd get_camera
+
 this will return ‘supported=1 ‘detected=1’ if the camera is enabled and a camera is detected.
 
 ## test run the software
@@ -54,6 +57,5 @@ You can run the web server with:
 > python3 webserv.py -c testconfig.py
 
 This will display the useful bit of the url which can use use on any local machine to access the app.
-
 
 [More documentaton is available here.](https://picamdocs.readthedocs.io/en/latest/)
