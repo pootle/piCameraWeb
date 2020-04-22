@@ -20,7 +20,9 @@ videovardefs=( # these are all the var's used by the videorecorder
     {'name': 'recordnow',   '_cclass': pvars.enumVar,       'fallbackValue': 'start', 'vlist': ('start', 'stop')},
     {'name': 'cpudetect',   '_cclass': pvars.enumVar,       'fallbackValue': 'off', 'vlist': ('off', 'on'), 'filters': ['pers']},
     {'name': 'gpiodetect',  '_cclass': pvars.enumVar,       'fallbackValue': 'off', 'vlist': ('off', 'on'), 'filters': ['pers']},
-    {'name': 'saveX264',    '_cclass': pvars.enumVar,       'fallbackValue': 'on', 'vlist': ('off', 'on'), 'filters': ['pers']},
+    {'name': 'saveX264',    '_cclass': pvars.enumVar,       'fallbackValue': 'off', 'vlist': ('off', 'on'), 'filters': ['pers']},
+    {'name': 'splitrecord', '_cclass': pvars.floatVar,      'fallbackValue': 0, 'minv': 0, 'maxv': 30, 'filters': ['pers']},
+    {'name': 'maxvidlength','_cclass': pvars.intVar,        'fallbackValue': 1, 'filters': ['pers']},
     {'name': 'recordback',  '_cclass': pvars.floatVar,      'fallbackValue': 0, 'minv':0, 'maxv':4, 'filters': ['pers']},
     {'name': 'recordfwd',   '_cclass': pvars.floatVar,      'fallbackValue': 0, 'minv':0, 'maxv':30, 'filters': ['pers']},
     {'name': 'vidfold',     '_cclass': pvars.folderVar,     'fallbackValue': '~/camfiles/videos', 'filters': ['pers']},
@@ -145,11 +147,14 @@ class VideoRecorder(pvars.groupVar):
                 if recorder=='circ':
                     #switch to file
                     fpath=self.makefilename()
-                    postpath=fpath.with_name(fpath.name+'post').with_suffix('.h264')
+                    recordingstart=time.time()
+                    recordingsequ=1
+                    postpath=fpath.with_name(fpath.name+'%03d' % recordingsequ).with_suffix('.h264')
                     self.log(10, '>>>>>>>>>>>>>>>>>    trig split recording to %s' % postpath)
                     picam.split_recording(str(postpath), splitter_port=splitter_port)
-                    prepath=fpath.with_name(fpath.name+'pre').with_suffix('.h264')
+                    prepath=fpath.with_name(fpath.name+'%03d' % 0).with_suffix('.h264')
                     circstream.copy_to(str(prepath), seconds=self['recordback'].getValue())
+                    self.processfiles((True, prepath))
                     circstream.clear()
                     recorder='afile'
                     self['recordcount'].increment(agent = 'driver')
@@ -159,17 +164,29 @@ class VideoRecorder(pvars.groupVar):
                     # start recording to file
                     fpath=self.makefilename()
                     prepath=None
-                    postpath=fpath.with_name(fpath.name+'post').with_suffix('.h264')
+                    postpath=fpath.with_name(fpath.name+'%03d' % 0).with_suffix('.h264')
                     self.log(10, '>>>>>>>>>>>>>>>>>trig start recording to file %s' % postpath)
                     picam.start_recording(str(postpath), resize=resize, sps_timing=self.withsps,splitter_port=splitter_port)
+                    recordingstart=time.time()
+                    recordingsequ=0
                     recorder='afile'
                     self['recordcount'].increment(agent = 'driver')
                     self['lasttrigger'].setValue(time.time(), 'driver')
                     self['status'].setIndex(2, 'driver') # recording
                 else:
-                    # already recodrding to file - carry on
-                    self.log(10, '>>>>>>>>>>>>>>>>>trig check and continue')
-                    picam.wait_recording(splitter_port=splitter_port) # carry on recording - (check for split recording file?
+                    # already recording to file - carry on
+                    picam.wait_recording(splitter_port=splitter_port) # carry on recording - check for split recording file
+                    if self['splitrecord'].getValue() > 0.01:
+                        splitsecs= round(self['splitrecord'].getValue()*60)
+                        if time.time() > recordingstart + splitsecs:
+                            postpath=fpath.with_name(fpath.name+'%03d' % (recordingsequ+1)).with_suffix('.h264')
+                            picam.split_recording(str(postpath), splitter_port=splitter_port)
+                            self.processfiles((True, fpath.with_name(fpath.name+'%03d' % recordingsequ).with_suffix('.h264')))
+                            recordingsequ += 1
+                            recordingstart=time.time()
+                            self.log(10, '>>>>>>>>>>>>>>>>>trig split recording and continue')
+                    else:
+                        self.log(10, '>>>>>>>>>>>>>>>>>trig check and continue')
             else: # no triggers present (now) - what were we doing?
                 if recorder=='circ':
                     if self['recordback'].getValue()==0: # no re-trigger time now so close that down
@@ -211,7 +228,7 @@ class VideoRecorder(pvars.groupVar):
                             self.log(10, '>>>>>>>>>>>>>>>>>not trig stop recording')
                             recorder='none'
                         self['status'].setIndex(1, 'driver')
-                        self.processfiles([fpath, postpath] if prepath is None else [fpath, prepath, postpath])
+                        self.processfiles((False, fpath.with_name(fpath.name+'%03d' % recordingsequ).with_suffix('.h264')))
         if recorder=='circ':
             picam.stop_recording(splitter_port=splitter_port)
             circstream=None
@@ -221,7 +238,7 @@ class VideoRecorder(pvars.groupVar):
             circstream = None
             recorder='none'
             self.log(10, '>>>>>>>>>>>>>>>>>final stop recording')
-            self.processfiles([fpath, postpath] if prepath is None else [fpath, prepath, postpath])
+            self.processfiles((False, fpath.with_name(fpath.name+'%03d' % recordingsequ).with_suffix('.h264')))
         if not self.procthread is None:
             self.procqueue.put('stop')
         self.app._releaseSplitterPort(self.name, splitter_port)
@@ -230,55 +247,64 @@ class VideoRecorder(pvars.groupVar):
         self.cleartrigger('*')
         self.monthread=None
         
-    def processfiles(self, filelist):
+    def processfiles(self, data):
         if self.procthread is None:
             self.procqueue=queue.Queue()
             self.procthread=threading.Thread(name=self.name, target=self.fileprocessor, kwargs={'q': self.procqueue})
             self.procthread.start()
-        self.procqueue.put(filelist)
+        self.procqueue.put(data)
 
     def fileprocessor(self, q):
         nextact=q.get()
         while nextact != 'stop':
-            cmd=['MP4Box', '-quiet']
-            output=nextact.pop(0).with_suffix('.mp4')
-            inp1=nextact.pop(0)
-            while not inp1 is None and inp1.is_file() and inp1.stat().st_size == 0:
-                if len(nextact) > 0:
-                    inp1=nextact.pop(0)
+            print('==================', nextact)
+            flist=[]
+            more, fpath=nextact
+            while more:
+                if fpath.exists:
+                    if  fpath.stat().st_size > 0:
+                        flist.append(fpath)
+                        if self['maxvidlength'].getValue() > 0 and len(flist) >=self['maxvidlength'].getValue():
+                            self.processvid(flist)
+                            flist=[]
+                    else:
+                        fpath.unlink()
                 else:
-                    inp1=None
-            if inp1 is None:
-                self.log(30, 'recording postprocess found nothing to do for output %s' % output)
+                    print('file processor oops A', fpath)
+                more, fpath = q.get()
+            if fpath.exists():
+                if  fpath.stat().st_size > 0:
+                    flist.append(fpath)
+                else:
+                    fpath.unlink()
             else:
-                cmd.append('-add')
-                cmd.append(str(inp1))
-                filepaths=[inp1]
-                while len(nextact) > 0:
-                    nextin = nextact.pop(0)
-                    if nextin.is_file():
-                        if nextin.stat().st_size > 0:
-                            cmd.append('-cat')
-                            cmd.append(str(nextin))
-                            filepaths.append(nextin)
-                    else:
-                        self.log(30, 'mp4boxing input file %s not found' % str(nextin))
-                cmd.append(str(output))
-                self.log(40, 'record postprocessing with %s' % str(cmd))
-                subp=Popen(cmd, universal_newlines=True, stdout=PIPE, stderr=PIPE)
-                outs, errs = subp.communicate()
-                rcode=subp.returncode
-                if rcode==0:
-                    self.log(40, 'recording postprocessing done')
-                    shutil.copystat(str(filepaths[0]), str(output))
-                    if self['saveX264'].getIndex()==0:
-                        for f in filepaths:
-                            if f.is_file():
-                                f.unlink()
-                else:
-                    if errs is None:
-                        self.log(30, 'MP4Box error - code %s' % rcode)
-                    else:
-                        self.log(30, 'MP4Box stderr:'+str(errs))
+                print('file processor oops B', fpath)
+            self.processvid(flist)
             nextact=q.get()
-        
+
+    def processvid(self, flist):
+        if len(flist) > 0:
+            cmd=['MP4Box', '-quiet', '-add', str(flist[0] )]
+            for fpath in flist[1:]:
+                cmd.append('-cat')
+                cmd.append(str(fpath))
+            outfile=flist[0].with_suffix('.mp4')
+            cmd.append(str(outfile))
+            print(cmd)
+            subp=Popen(cmd, universal_newlines=True, stdout=PIPE, stderr=PIPE)
+            outs, errs = subp.communicate()
+            rcode=subp.returncode
+            if rcode==0:
+                self.log(40, 'recording postprocessing done for %s'% str(outfile))
+                print('recording postprocessing done for %s'% str(outfile))
+                shutil.copystat(str(flist[0]), str(outfile))
+                if self['saveX264'].getIndex()==0:
+                    for f in flist:
+                        f.unlink()
+            else:
+                if errs is None:
+                    self.log(30, 'MP4Box error - code %s' % rcode)
+                    print('MP4Box error - code %s' % rcode)
+                else:
+                    self.log(30, 'MP4Box stderr:'+str(errs))
+                    print('MP4Box stderr:'+str(errs))            

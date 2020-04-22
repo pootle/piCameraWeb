@@ -210,7 +210,6 @@ class requHandler(http.server.BaseHTTPRequestHandler):
         elif 'vidstreamhandler' in requinfo:
             streamparams=requinfo['vidstreamhandler']
             tp=streamparams['resolve'](queryparams)
-            print(str(tp))
             if tp.exists():
                 tsize=tp.stat().st_size
                 if True:

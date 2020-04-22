@@ -60,7 +60,7 @@ page="""<html><head>\n
     </form>
 </div>
 <div id="vidhere">
-<span>nothing yet</span>
+<span>.</span>
 </div>
 </body>
 </html>
