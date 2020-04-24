@@ -120,6 +120,8 @@ recordfields=(
             'label': 'use gpio detection', 'shelp': 'uses gpio level flag to trigger recording (only works if gpio triggering status is on)'},
     {'app': 'camera', 'varlocal': 'startstop', 'fieldmaker': htmlmaker.make_enumBtn, 'userupa':'user', 'liveupa': 'driver',
             'label': 'start / stop', 'shelp': 'start / stop record when triggered'},
+    {'app': 'camera', 'varlocal': 'autostart', 'fieldmaker': htmlmaker.make_enumVar, 'userupa':'user',
+            'label': 'autostart', 'shelp': 'starts triggered recording automatically when app starts'},
     {'app': 'camera', 'varlocal': 'recordcount', 'fieldmaker': htmlmaker.make_numVar, 'updclass': htmlmaker.varintupdater, 'liveupa': 'driver',
             'label': 'number of triggers', 'shelp': 'count of times triggered this session'},
     {'app': 'camera', 'varlocal': 'lastactive', 'fieldmaker': htmlmaker.make_timeVar, 'liveupa': 'driver',
@@ -235,8 +237,10 @@ page4={
             'outerwrap'     : sectwrap,}),
         ('camrun', htmlmaker.make_strVar, {'app': 'camera', 'varname': 'camstate/camactive', 'liveupa': 'driver'}),
         ('camsumry', htmlmaker.make_numVar, {'app': 'camera', 'varname': 'camsettings/framerate', 'updclass': htmlmaker.varfloatupdater, 
-                'liveupa': 'driver', 'fstring': '{nstr:4.2f}fps'}),
+                'liveupa': 'driver', 'fstring': '{nstr:4.2f}fps', 'updparams': {'updateformat': '{varval:.2%}'},}, ),
         ('saver', htmlmaker.make_enumVar, {'app': 'camera', 'varname': 'saveset', 'userupa':'user',}),
+        ('freespace', htmlmaker.make_numVar, {'app': 'foldapp', 'varname': 'diskfree', 'fstring': '{nstr:.2%}',
+                'updclass':  htmlmaker.varfloatupdater, 'updparams': {'updateformat': '{varval:.2%}'}, 'liveupa' : 'driver'}),
         ('camacthead', htmlmaker.makecameraactheads, {}),
         ('camactvals', htmlmaker.makecameraactstats, {}),
         ],
@@ -261,6 +265,7 @@ page4={
                    <tr><td class="camsetstyle" style="text-align: center;" >camera status</td>{camacthead}<td>{saver}</td><td rowspan="2"><span class="btnlike"><a href="filer.html">show videos</a></span></td></tr>\n
                    <tr><td class="camsetstyle" style="text-align: center;" >{camrun}</td>{camactvals}</tr>\n
                    <tr><td class="camsetstyle" style="text-align: center;" >{camsumry}</td></tr>\n
+                   <tr><td>free space</td><td>{freespace}</td></tr>
                    <tr><td colspan=4 id="appmessage">messages go here</td></tr>
                </table>
            </div>
@@ -347,8 +352,8 @@ config={
         '/vs.mp4'               : {'vidstreamhandler': {'resolve': foldapp.resolvevidfile}},
             },
     'staticroot'                : {'path':pathlib.Path(__file__).parent/'static', 'root':'/stat/'},
-    'apps'                      : {'camera': cameraApp},
-    'oncloseapps'               : (sysinfo.closeall, cameraApp.safeStopCamera),
+    'apps'                      : {'camera': cameraApp, 'foldapp': foldapp},
+    'oncloseapps'               : (sysinfo.closeall, cameraApp.safeStopCamera, foldapp.stopme),
     'POST'              : {
         
         },

@@ -64,3 +64,11 @@ cd to the piCameraWeb folder, then you can run the web server with:
 This will display the useful bit of the url which can use use on any local machine to access the app.
 
 [More documentaton is available here.](https://picamdocs.readthedocs.io/en/latest/)
+
+To start the app automatically on boot use crontab and add the following line: (note crontab will prompt for an editor the first time you do this)
+
+> crontab -e
+
+add this line:
+
+> @reboot              ~/piCameraWeb/webserv.py -c ~/piCameraWeb/testconfig.py -l ~/camlog.log >> ~/shlog.log 2>&1
