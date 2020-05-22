@@ -5,7 +5,7 @@ Startup for web service to process command line arguments and start up the web s
 The main web service is normally (inherits from) http.server.HTTPServer), and the message handler from http.server.BaseHTTPRequestHandler.
 The classes used are defined in the config file - which is the only mandatory argument.
 
-Optionally, the web server can be started in a thread, so a python prompt  is available (when run from an interavtive shell), allowing
+Optionally, the web server can be started in a thread, so a python prompt  is available (when run from an interactive shell), allowing
 the objects to be accessed from the prompt.
 
 A KeyboardInterrupt should stop the entire service ruuning and exit.
@@ -25,10 +25,10 @@ if __name__ == '__main__':
 
     if args.config is None:
         sys.exit('no configuration file given.')
-    configpath=pathlib.Path(args.config)
+    configpath=pathlib.Path(args.config).expanduser()
     if not configpath.with_suffix('.py').is_file():
         sys.exit('cannot find configuration file ' + str(configpath.with_suffix('.py')))
-    if not str(configpath.parent) == '.':
+    if not str(configpath.parent) == '.' and not configpath.parent in sys.path:
         sys.path.insert(1,str(configpath.parent))
     configmodule=importlib.import_module(configpath.stem)
     
@@ -36,14 +36,13 @@ if __name__ == '__main__':
     loglevel=getattr(configmodule,'loglevel',50)
     if loglevel < 0 or loglevel > 100:
         sys.exit('invalid loglevel in config file - must be between 0..100, found %s' % loglevel)
-#    logging.basicConfig(**configmodule.logformat)
     toplog=logging.getLogger()
     toplog.setLevel(loglevel)
 
     if args.consolelog is None:
         print('no console log')
     else:
-        print('setting console log')
+        print('setting console log, loglevel', args.consolelog)
         chandler=logging.StreamHandler()
         if hasattr(configmodule, 'consolelogformat'):
             chandler.setFormatter(logging.Formatter(**configmodule.consolelogformat))
@@ -61,23 +60,25 @@ if __name__ == '__main__':
             lfh.setFormatter(logging.Formatter(**configmodule.filelogformat))
         toplog.addHandler(lfh)
 
-    assert hasattr(configmodule,'config')
+    assert hasattr(configmodule, 'webport')
+    assert hasattr(configmodule, 'config')
+    assert hasattr(configmodule, 'httpserverclass')
+    assert hasattr(configmodule, 'httprequestclass')
+    assert hasattr(configmodule, 'config')
+
     config=configmodule.config
     assert isinstance(config, dict)
-    assert 'port' in config
     
     ips=netinf.allIP4()
     if len(ips)==0:
-        smsg='starting webserver on internal IP only (no external IP addresses found), port %d' % (config['port'])
+        smsg='starting webserver on internal IP only (no external IP addresses found), port %d' % (configmodule.webport)
     elif len(ips)==1:
-        smsg='Starting webserver on %s:%d' % (ips[0], config['port'])
+        smsg='Starting webserver on %s:%d' % (ips[0], configmodule.webport)
     else:
-        smsg='Starting webserver on multiple ip addresses (%s), port:%d' % (str(ips), config['port'])
+        smsg='Starting webserver on multiple ip addresses (%s), port:%d' % (str(ips), configmodule.webport)
     toplog.info(smsg)
 
-    assert 'serverclass' in config
-    assert 'handlerclass' in config
-    server = config['serverclass'](('',config['port']),config['handlerclass'], config=config)
+    server = configmodule.httpserverclass(('',configmodule.webport),configmodule.httprequestclass, config=config)
     assert isinstance(server, http.server.HTTPServer)
     if args.interactive:
         toplog.info('interactive mode - start at server.mypyobjects')

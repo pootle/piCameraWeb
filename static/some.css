@@ -1,5 +1,6 @@
 body {
     background-color: #405050;
+    color: white;
 }
 
 .stgpnl{
@@ -8,12 +9,7 @@ body {
 
 .overpnl{
     float: left;
-    width: 690px;
-}
-
-img.cbtn{
-    width:50;
-    height:50;    
+    width: 800px;
 }
 
 input{
@@ -23,31 +19,6 @@ input{
 
 select{
     background-color: black;
-    color: white;
-}
-
-.camsetstyle{
-    background-color: darkblue;
-    color: white;
-}
-
-.camstreamstyle{
-    background-color: darkred;
-    color: white;
-}
-
-.gpio_triggerstyle{
-    background-color:darkgreen;
-    color: white;
-}
-
-.trig_recordstyle{
-    background-color: purple;
-    color: white;
-}
-
-.cpumovestyle{
-    background-color: darkorchid;
     color: white;
 }
 
@@ -77,20 +48,6 @@ select{
     border-color: #ccc;
 }
 
-.sectheadtext{
-    font-size:15pt;
-    font-weight: bold;
-    padding-top: 8px;
-    padding-bottom: 3px;
-    text-align: center;
-}
-
-.sectheadoc{
-    float: right;
-    width:40px; 
-    height:40px;
-}
-
 .fieldlabel{
     text-align: right;
     padding-bottom: 1px;
@@ -111,4 +68,47 @@ select{
 }
 .fieldlink:active{
     color: silver; 
+}
+
+.sectheadtext{
+    font-size:15pt;
+    font-weight: bold;
+    padding-top: 8px;
+    padding-bottom: 3px;
+    text-align: center;
+}
+
+.sectheadoc{
+    float: right;
+    width:40px;
+    height:40px;
+}
+
+.camsetstyle{
+    background-color: darkblue;
+    color: white;
+}
+
+.camstreamstyle{
+    background-color: darkred;
+    color: white;
+}
+
+.gpio_triggerstyle{
+    background-color:darkgreen;
+    color: white;
+}
+
+.trig_recordstyle{
+    background-color: purple;
+    color: white;
+}
+
+.cpumovestyle{
+    background-color: darkorchid;
+    color: white;
+}
+.focusstyle{
+    background-color: DarkSlateGray;
+    color: white;
 }

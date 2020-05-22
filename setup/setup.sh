@@ -12,7 +12,7 @@ echo "====================================================="
 echo "installing addtional software required by piCameraWeb"
 echo "====================================================="
 
-apt-get -q -y install python3-pip gpac python3-pigpio python3-numpy python3-picamera python3-png python3-watchdog
+apt-get -q -y install python3-pip gpac python3-pigpio python3-numpy python3-picamera python3-png python3-watchdog python3-psutil
 
 echo "===================================="
 echo "applying patches to picamera package"

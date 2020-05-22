@@ -1,0 +1,26 @@
+<html>
+<head>
+       <script src="/static/smoothie.js"></script>
+       <script src="/static/pigraphinit.js"></script>
+       <script type="text/javascript">
+            window.onload=startup
+
+            function startup() {{
+                pigraphinit()
+            }}
+       </script>
+   </head>
+   <body>
+       <div id="header">
+           <table>
+               <tr><th>CPU temperature</th>
+                   <th title="total cpu load - instant and smoothed" ><span>CPU load </span><span id="picpuavg" ></span></th>
+               </tr>
+               <tr>
+                   <td rowspan="2"><canvas id="pitempchart" width="200" height="60"></canvas></td>
+                   <td rowspan="2"><canvas id="picputime" width="200" height="60"></canvas></td>
+               </tr>
+           </table>
+        <h3>Hello</h3>
+    </body>
+</html>

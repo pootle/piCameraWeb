@@ -1,59 +1,11 @@
 
-function pipyinit() {
-    if (!!window.EventSource) {
-        var tempdataset = new TimeSeries()
-        var templine = new SmoothieChart({ fps: 30, millisPerPixel: 200, tooltip: false, minValue:20, maxValue:70,
-                grid: { strokeStyle: '#555555', lineWidth: 1, millisPerLine: 5000, verticalSections: 4}});
-        templine.addTimeSeries(tempdataset,
-                { strokeStyle:'rgb(128, 250, 128)', fillStyle:'rgba(128, 250, 128, 0.4)', lineWidth:2 });
-        templine.streamTo(document.getElementById("pitempchart"), 1000);
-        var cpudataset = new TimeSeries();
-        var cpudatasetavg = new TimeSeries();
-        var cpudataavg = 0;
-        var cpuchart = new SmoothieChart({ fps: 30, millisPerPixel: 200, tooltip: false, minValue:0, maxValue:100, 
-                grid: { strokeStyle: '#555555', lineWidth: 1, millisPerLine: 5000, verticalSections: 4} });
-        cpuchart.addTimeSeries(cpudataset,
-                { strokeStyle:'rgb(128, 250, 128)', fillStyle:'rgba(128, 250, 128, 0.4)', lineWidth:2 });
-        cpuchart.addTimeSeries(cpudatasetavg, 
-                { strokeStyle:'rgb(250, 100, 128)', fillStyle:'rgba(250, 100, 128, 0.4)', lineWidth:2 });
-        cpuchart.streamTo(document.getElementById("picputime"), 1000);
-        var esource = new EventSource("pistatus?fields=busy&fields=cputemp");
-        esource.addEventListener("message", function(e) {
-            var newinfo=JSON.parse(e.data);
-            tempdataset.append(Date.now(),newinfo.cputemp);
-            cpudataset.append(Date.now(), newinfo.busy*100);
-            cpudataavg=(cpudataavg*3+newinfo.busy*100)/4;
-            cpudatasetavg.append(Date.now(),cpudataavg);
-            var cel = document.getElementById("picpuavg");
-            if (cel) {
-                cel.innerHTML=cpudataavg.toFixed(2)+"%";
-            }
-        }, false);
-        esource.addEventListener("open", function(e) {
-            var tempel = document.getElementById("appmessage");
-            tempel.innerHTML="update Connection established";
-        }, false);
-        esource.addEventListener("error", function(e) {
-            var tempel = document.getElementById("appmessage");
-            if (e.readyState == EventSource.CLOSED) {
-                tempel.innerHTML="update connection lost";
-            } else {
-                tempel.innerHTML="update connection had an error";
-            }
-        }, false);
-    } else {
-        var tempel = document.getElementById("note");
-        tempel.innerHTML="I'm sorry Dave, live updates not supported by this browser";
-    }
-}
-
 function liveupdates(updatename) {
-    var esource = new EventSource("updates?updatename="+updatename);
+    var esource = new EventSource("appupdates?updatename="+updatename);
     esource.addEventListener("message", function(e) {
-            if (e.data=='kwac') {
-                console.log('nothing')
+            var newinfo=JSON.parse(e.data);
+            if (newinfo=='kwac') {
+                console.log('update nothing')
             } else {
-                var newinfo=JSON.parse(e.data);
                 newinfo.forEach(function(update, idx) {
                     console.log(update[0] + ' is ' + update[1]);
                     var tempel=document.getElementById(update[0]);
@@ -76,15 +28,51 @@ function liveupdates(updatename) {
 }
 
 async function appNotify(ele, pageid) {
-    let response = await fetch("updateSetting?t="+ele.id+"&v="+ele.value+"&p="+pageid);
+    ele.disabled=true;
+    fs="updateSetting?t="+ele.id+"&v="+ele.value+"&p="+pageid
+ //   console.log('request: '+fs)
+    let response = await fetch(fs);
     if (response.ok) { // if HTTP-status is 200-299
         let resp = await response.text();
-        if (resp!='OK ') {
-            alert(resp)
+        let msg = JSON.parse(resp)
+        if (msg.OK) {
+            if (ele.nodeName=='SELECT') {
+                ele.innerHTML=msg.value;
+            } else if (ele.nodeName=='INPUT') {
+                ele.value=msg.value;
+            } else {
+                ele.innerText=msg.value;
+            }
+        } else {
+            alert(msg.fail)
+        }
+        console.log('good status from request >' + fs + '<, msg: ' + response.statusText)
+    } else {
+        console.log('bad status from request >' + fs + '<, msg: ' + response.statusText)
+        alert("HTTP-Error: " + response.statusText);
+    }
+    ele.disabled=false;
+}
+
+async function appClickNotify(ele, pageid) {
+    ele.disabled=true;
+    let response = await fetch("updateSetting?t="+ele.id+"&v=0&p="+pageid);
+    if (response.ok) { // if HTTP-status is 200-299
+        let resp = await response.text();
+        let msg = JSON.parse(resp)
+        if (msg.OK) {
+            if (ele.nodeName=='SELECT') {
+                ele.innerHTML=msg.value;
+            } else {
+                ele.value=msg.value;
+            }
+        } else {
+            alert(msg.fail)
         }
     } else {
         alert("HTTP-Error: " + response.status);
     }
+    ele.disabled=false;
 }
 
 function livestreamflip(btnel) {
@@ -92,9 +80,11 @@ function livestreamflip(btnel) {
     if (imele.src.endsWith("nocam.png")                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 ) {
         imele.src="camstream.mjpg"
         btnel.innerHTML="hide livestream"
+        console.log('live stream stopped')
     } else {
-        imele.src="stat/nocam.png"
+        imele.src="static/nocam.png"
         btnel.innerHTML="show livestream"
+        console.log('live stream started')
     }
 }
 
@@ -121,9 +111,9 @@ function flipme(etag, itag) {
     var img=document.getElementById(itag);
     if (x=="none") {
         ele.style.display="";
-        img.src="openuparrow.svg"
+        img.src="static/openuparrow.svg"
     } else {
-        img.src="opendnarrow.svg"
+        img.src="static/opendnarrow.svg"
         ele.style.display="none";
     }
 }
