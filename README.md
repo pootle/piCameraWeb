@@ -59,7 +59,7 @@ this will return ‘supported=1 ‘detected=1’ if the camera is enabled and a 
 ## test run the software
 
 cd to the piCameraWeb folder, then you can run the web server with:
-> python3 webserv.py -c testconfig.py
+> ./app.py -c config_full.py
 
 This will display the useful bit of the url which can use use on any local machine to access the app.
 
@@ -71,7 +71,7 @@ To start the app automatically on boot use crontab and add the following line: (
 
 add this line:
 
-> @reboot              ~/piCameraWeb/webserv.py -c ~/piCameraWeb/config_full.py -l ~/camlog.log >> ~/shlog.log 2>&1
+> @reboot              ~/piCameraWeb/app.py -c ~/piCameraWeb/config_full.py -l ~/camlog.log >> ~/shlog.log 2>&1
 
 ## very basic config
 
