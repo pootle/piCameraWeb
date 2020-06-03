@@ -71,4 +71,14 @@ To start the app automatically on boot use crontab and add the following line: (
 
 add this line:
 
-> @reboot              ~/piCameraWeb/webserv.py -c ~/piCameraWeb/testconfig.py -l ~/camlog.log >> ~/shlog.log 2>&1
+> @reboot              ~/piCameraWeb/webserv.py -c ~/piCameraWeb/config_full.py -l ~/camlog.log >> ~/shlog.log 2>&1
+
+## very basic config
+
+The particular features to be included in the running app are controlled by the list at line 46b in config_full.py
+
+> actlist=[
+>    'camstream', 'cpumove', 'triggervid', 'triggergpio', 'focusser'
+> ]
+
+In particular triggergpio and focusser use pigpio, so if you don't need these remove them and the app will run without the pigpio daemon running
