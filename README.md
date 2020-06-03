@@ -59,19 +59,24 @@ this will return ‘supported=1 ‘detected=1’ if the camera is enabled and a 
 ## test run the software
 
 cd to the piCameraWeb folder, then you can run the web server with:
-> python3 webserv.py -c testconfig.py
+> ./app.py -c config_full.py
 
 This will display the useful bit of the url which can use use on any local machine to access the app.
 
 [More documentaton is available here.](https://picamdocs.readthedocs.io/en/latest/)
 
+## start automatically
 To start the app automatically on boot use crontab and add the following line: (note crontab will prompt for an editor the first time you do this)
 
 > crontab -e
 
 add this line:
 
-> @reboot              ~/piCameraWeb/webserv.py -c ~/piCameraWeb/config_full.py -l ~/camlog.log >> ~/shlog.log 2>&1
+> @reboot sleep 45;cd ~/piCameraWeb; ./app.py -c ./config_full.py -l ~/camlog.log >> ~/shlog.log 2>&1
+
+If you need pigpio running then set it up to run automatically like this:
+
+> sudo systemctl enable pigpiod
 
 ## very basic config
 
