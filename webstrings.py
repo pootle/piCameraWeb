@@ -37,6 +37,12 @@ tablefieldcyclicbtndnhtml = {
     'fieldf': fieldnouser, 
 }
 
+# wraps a set of fields as part of an existing table. 1 row with a header which has a button to open and close the group of fields that follow
+# expects parameters:
+#   style   : class used for all parts - typically used just to set background color
+#   title   : title used in the header line of the section
+#   flipid  : id used for the open close button and the main body of fields that are shown / hidden
+#   fields  : bunch of html rows that form the main part of the section
 tablesectwrapper = """
     <tr class="{style}">
         <td colspan="3" class="sectheadtext" >{title}</td>
@@ -45,6 +51,7 @@ tablesectwrapper = """
     <tbody id="{flipid}" class="{style}" style="display: none;">
         {fields}
     </tbody>\n"""
+
 
 spanfieldinputhtml = {
     'all'   : spanfieldall,

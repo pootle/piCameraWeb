@@ -30,7 +30,6 @@ function liveupdates(updatename) {
 async function appNotify(ele, pageid) {
     ele.disabled=true;
     fs="updateSetting?t="+ele.id+"&v="+ele.value+"&p="+pageid
- //   console.log('request: '+fs)
     let response = await fetch(fs);
     if (response.ok) { // if HTTP-status is 200-299
         let resp = await response.text();

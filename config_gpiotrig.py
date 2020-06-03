@@ -4,16 +4,11 @@ This is an example config module for a pootleweb web server.
 It provides all the info needed to start and run a webserver using pootleweb, with the various parts explained.
 
 This module is loaded by webserv.py and various entries are used by webserv.py to start the webserver.
-
 """
 
-import basichttpserver as httpbase   # this module should contain the classes httpserver and httprequh
+from pootlestuff import basichttpserver as httpbase   # this module should contain the classes httpserver and httprequh
 import pathlib
-
-import piCamHandleWeb
-import folderapp
-import sysinfo
-from pootlestuff.watchables import loglvls
+from triggergpioweb import webtriggergpio
 
 ######################################################################################################
 # The following fields are used directly by webserv.py
@@ -41,24 +36,22 @@ httpserverclass = httpbase.httpserver
 # this is the class instantiated to handle each incoming http request
 httprequestclass = httpbase.httprequh
 
+# default settings file. This can be overridden using -s on the webserv command
+settingsfile = '~/stepper.cfg'
+
 ###########################################################################
 # The following defines the apps that are setup to support the web server #
 ###########################################################################
-
-app1        =piCamHandleWeb.piCamWeb(loglevel=loglvls.DEBUG)
-foldapp     =folderapp.fileManager(basefolder=app1.activities['triggervid'].vidfold)
-
-config = {
-    'staticroot'        : {'path':pathlib.Path(__file__).parent/'static', 'root':'/stat/'}, # specifies the folder in which static files are found
-    'oncloseapps'       : (app1.safeStopCamera,),
-    'GET'               : { # all valid GETs and what to do with them. each entry is a 2-tuple, with a keyword used by the httprequest handler to
-                            # select how to process the request.
-        'index.html'    : ('makedynampage', (app1.makeMainPage,{})),
-        'filer.html'    : ('makedynampage', (foldapp.make_page, {})),
-        'pistatus'      : ('updatestream',  (sysinfo.getsystemstats,{})),
-        'appupdates'    : ('updatestream',  ('serv', 'getupdates')),
-        'updateSetting' : ('updatewv', 0),
-        'camstream.mjpg': ('camstream', app1.activities['camstream'].getStream),
-        'vs.mp4'        : ('vidstream', {'resolve': foldapp.resolvevidfile}),
+def setup(settings):
+    app1 =  webtriggergpio(settings=settings)
+    return  {
+        'staticroot'        : {'path':pathlib.Path(__file__).parent/'static', 'root':'/stat/'}, # specifies the folder in which static files are found
+        'app'               : app1,
+        'GET'               : { # all valid GETs and what to do with them. each entry is a 2-tuple, with a keyword used by the httprequest handler to
+                                # select how to process the request.
+            ''              : ('redirect', '/index.html'),
+            'index.html'    : ('makedynampage', (app1.makeMainPage,{'page':'templates/gpiotriggeronly.html'})),
+            'updateSetting' : ('updatewv', 0),
+            'appupdates'    : ('updatestream',  ('serv', 'getupdates')),
+        }
     }
-}

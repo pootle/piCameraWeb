@@ -4,26 +4,26 @@ from pootlestuff.watchables import myagents
 
 from webstrings import tablefieldinputhtml, tablefielddropdnhtml, tablefieldcyclicbtndnhtml, tablesectwrapper
 
-class webcpumove(piCamMovecpu.MoveDetectCPU):
-    def streaminfo(self, pagelist):
-        fields = \
-            pagelink.wwlink(wable=self.status, pagelist=pagelist, userupa=None, liveupa=myagents.app,
-                    label = 'status', shelp='cpu detection activity status').webitem(fformat=tablefieldinputhtml) + \
-            pagelink.wwenumbtn(wable=self.startstopbtn, pagelist=pagelist, userupa=myagents.user, liveupa = None,
-                    label='start / stop cpu detect' , shelp='start / stop cpu based detection activity').webitem(fformat=tablefieldcyclicbtndnhtml) +\
-            pagelink.wwenum(wable=self.autostart, pagelist=pagelist, userupa=myagents.user, liveupa=None,
-                    label = 'auto start', shelp='starts cpu detection when app runs').webitem(fformat=tablefielddropdnhtml) +\
-            pagelink.wwlink(wable=self.width, pagelist=pagelist, userupa=myagents.user, liveupa=None, liveformat='{wl.varvalue:3d}',
-                    label = 'analysis width', shelp='camera output resized for analysis').webitem(fformat=tablefieldinputhtml) + \
-            pagelink.wwlink(wable=self.height, pagelist=pagelist, userupa=myagents.user, liveupa=None, liveformat='{wl.varvalue:3d}',
-                    label = 'analysis height', shelp='camera output resized for analysis').webitem(fformat=tablefieldinputhtml) + \
-            pagelink.wwenum(wable=self.imagemode, pagelist=pagelist, userupa=myagents.user, liveupa=None,
-                    label = 'format', shelp='set rgb or yuv for analysis').webitem(fformat=tablefielddropdnhtml) + \
-            pagelink.wwenum(wable=self.imagechannel, pagelist=pagelist, userupa=myagents.user, liveupa=None,
-                    label = 'channel', shelp='sets a single channel tor all channels (*) to use for analysis').webitem(fformat=tablefielddropdnhtml) +\
-            pagelink.wwtime(wable=self.lasttrigger, pagelist=pagelist, userupa=None, liveupa=myagents.app, liveformat='%H:%M:%S',
-                label = 'last trigger time', shelp='time of last trigger').webitem(fformat=tablefieldinputhtml) +\
-            pagelink.wwlink(wable=self.triggercount, pagelist=pagelist, userupa=None, liveupa=myagents.app, liveformat='{wl.varvalue:4d}',
-                    label = 'trigger count', shelp='number of times this trigger has fired this session').webitem(fformat=tablefieldinputhtml)
+allRecordDefs=(
+    (pagelink.wwlink,   'status',       myagents.app,   'status',           tablefieldinputhtml,        'cpu detection activity status'),
+    (pagelink.wwenumbtn,'startstopbtn', myagents.user,  'start / stop',     tablefieldcyclicbtndnhtml,  'start / stop cpu based detection activity'),
+    (pagelink.wwenum,   'autostart',    myagents.user,  'auto start',       tablefielddropdnhtml,       'starts monitoring when app runs'),
+    (pagelink.wwlink,   'width',        myagents.user,  'analysis width',   tablefieldinputhtml,        'camera output resized for analysis',       {'liveformat': '{wl.varvalue:3d}'}),
+    (pagelink.wwlink,   'height',       myagents.user,  'stream video height',tablefieldinputhtml,      'camera output resized for sanalysis',      {'liveformat': '{wl.varvalue:3d}'}),
+    (pagelink.wwenum,   'imagemode',    myagents.user,  'format',           tablefielddropdnhtml,       'set rgb or yuv for analysis'),
+    (pagelink.wwenum,   'imagechannel', myagents.user,  'channel',          tablefielddropdnhtml,       'sets a single channel tor all channels (*) to use for analysis'),
+    (pagelink.wwtime,   'lasttrigger',  myagents.app,   'last trigger time',tablefieldinputhtml,        'time of last trigger',                     {'liveformat': '%H:%M:%S'}),
+    (pagelink.wwlink,   'triggercount', myagents.app,   'trigger count',    tablefieldinputhtml,        'number of times this trigger has fired this session', {'liveformat': '{wl.varvalue:4d}'}),
+    (pagelink.wwlink,   'maskfold',     myagents.user,  'mask folder',      tablefieldinputhtml,        'folder for masks'),
+    (pagelink.wwlink,   'maskfile',     myagents.user,  'mask file',        tablefieldinputhtml,        'filename for png file to use as mask (-off- for no mask)'),
+)
 
-        return tablesectwrapper.format(style='cpumovestyle', flipid='xcpum', fields=fields, title='cpu movement detection settings')
+
+class webcpumove(piCamMovecpu.MoveDetectCPU):
+    def allfields(self, pagelist, fielddefs):
+        fieldstrs = [defn[0](wable=getattr(self, defn[1]), pagelist=pagelist, updators=defn[2], label=defn[3], shelp=defn[5], **(defn[6] if len(defn) > 6 else {})).
+                webitem(fformat=defn[4]) for defn in fielddefs]
+        return ''.join(fieldstrs)
+
+    def makePanel(self, pagelist):
+        return tablesectwrapper.format(style='cpumovestyle', flipid='xcpum', fields=self.allfields(pagelist,allRecordDefs), title='cpu movement detection settings')

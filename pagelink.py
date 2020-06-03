@@ -20,9 +20,11 @@ class pageupdatelist():
         var -> field id (which can be 1 to many)
         field id -> var (several fields can link to same var)
     """
-    def __init__(self, pageid, useragent='user'):
+    def __init__(self, pageid, useragent='user', userupdate=wv.myagents.user, liveupdate=wv.myagents.app):
         self.pageid=pageid
-        self.useragent=useragent
+#        self.useragent=useragent
+        self.userupdate=userupdate
+        self.liveupdate=liveupdate
         self.var_field_map={}  # maps vars to 1 or more fields on the web page
         self.field_var_map={}  # maps screen fields to vars 
         self.created=time.time()
@@ -31,7 +33,7 @@ class pageupdatelist():
         self.pendingupdates=set()
         self.nextid=1
 
-    def add_field(self, upper, userupa, liveupa):
+    def add_field(self, upper, userupa=None, liveupa=None, updators=None, usefid=None):
         """
         called as the html for a field is created....
         If the field is dynamic (user can update or server can update) then allocate an id, otherwise we don't need one
@@ -42,15 +44,23 @@ class pageupdatelist():
         
         liveupa     : None if application updates to the field are not dynamically sent to update the web page, otherwise the 
                       agent name that will be used when such updates happen
+
+        updators    : flag class with required update capabilities
+        
+        usefid      : allows a fixed id to be nominated for the field. This will be returned if the field updates, or None
+                      is returned if the field does not change on the page.
         
         returns None if the web page field has no id, otherwise the id of the field
         """
-        if userupa or liveupa:
-            fid=str(self.nextid)
-            self.nextid +=1
-            if userupa:
+        if userupa or liveupa or updators:
+            if usefid is None:
+                fid=str(self.nextid)
+                self.nextid +=1
+            else:
+                fid=usefid
+            if userupa or updators & self.userupdate:
                 self.field_var_map[fid]=upper
-            if liveupa:
+            if liveupa or updators & self.liveupdate:
                 assert not upper in self.var_field_map
                 self.var_field_map[upper]=fid
             return fid
@@ -88,7 +98,8 @@ class wwlink():
     This is used to generate the initial html when building the page, as well as enabling dynamic update
     of the web page from the watchable or the watchable from the web page.
     """
-    def __init__(self, wable, pagelist, userupa=None, liveupa=None, liveformat=None, label=None, shelp=None, doclink=None):
+    def __init__(self, wable, pagelist, userupa=None, liveupa=None, updators=None, liveformat=None,
+                 fixedfid=None, label=None, shelp=None, doclink=None):
         """
         sets up an updator that links an app var to a field on a web page
         
@@ -101,34 +112,48 @@ class wwlink():
         userupa     : the agent that will be used to update the watchable when the user changes a field on the web page (or none if
                       the user cannot update this field
 
+        updators    : specifies updates using enum flags - livepa and userpa are ignored
+
         liveformat  : a string to be used to format the new value when sent to the web browser, None means no formatting applied
                       liveformat.format is applied to this string with varval containing getValue() result from the watchable
+
+        fixedfid    : id's for fields on screen can be allocated dynamically for a page, or can be fixed using this parameter.
+
         label       : a label for the field
 
         shelp       : short help for the field
         
         doclink     : hyperlink to further documentation
         """
+        assert userupa is None
+        assert liveupa is None
         self.wable=wable
         self.pagelist=pagelist
         self.liveformat=liveformat
-        self.userupa=userupa
-        self.liveupa=liveupa
+        if isinstance(updators, wv.myagents):
+            self.updators=updators
+        else:
+            if userupa is None:
+               self.updators = liveupa
+            else:
+                self.updators=userupa
+                if not liveupa is None:
+                    self.updators |= self.liveupa
         if not label is None:
             self.label=label
         if not shelp is None:
             self.shelp=shelp
         if not doclink is None:
             self.doclink=doclink
-        if userupa or liveupa:   # an id is only needed if there are going to be dynamic updates (in either direction)
-            self.fid=self.pagelist.add_field(userupa=userupa, liveupa=liveupa, upper=self)
-            if liveupa:
+        if self.updators:   # an id and class instance is only needed if there are going to be dynamic updates (in either direction)
+            self.fid=self.pagelist.add_field(userupa=userupa, liveupa=liveupa, updators=updators, upper=self, usefid=fixedfid)
+            if self.updators & self.pagelist.liveupdate:
                 self.wable.log(wv.loglvls.INFO,'setting notify for var value %s' % self.wable.getValue())
-                self.wable.addNotify(self.varchanged, liveupa)
+                self.wable.addNotify(self.varchanged, self.pagelist.liveupdate)
 
     def varchanged(self, watched=None, agent=None, newValue=None, oldValue=None):
         """
-        triggered if the value is changed by the liveupa agent. Add this to the set of pending updates
+        triggered if the value is changed using liveupdate agent. Add this to the set of pending updates
         """
         self.pagelist.markpending(self)
 
@@ -136,8 +161,8 @@ class wwlink():
         """
         when the updatelist times out, we ditch the notifications set in the constructor
         """
-        if self.liveupa:
-            self.wable.dropNotify(self.varchanged, self.liveupa)
+        if self.updators & self.pagelist.liveupdate:
+            self.wable.dropNotify(self.varchanged, self.pagelist.liveupdate)
         
     def getUpdate(self):
         """
@@ -152,7 +177,7 @@ class wwlink():
         returns the full html for field with a label, short help etc.
         """
         attrs={'id': str(self.fid)} if hasattr(self, 'fid') else {}
-        if self.userupa:
+        if self.updators and self.updators & self.pagelist.userupdate:
             if wv.wflags.DISABLED in self.wable.flags:
                 attrs['disabled']='disabled'
             attrs[self.clickact]='appNotify(this, {})'.format(self.pagelist.pageid)
@@ -160,9 +185,11 @@ class wwlink():
         fullf = fformat['all'].format(
             wshelp = fformat['shelp'] if hasattr(self, 'shelp') else '',
             wlabel = fformat['label'] if hasattr(self, 'label') else '',
-            wfield = fformat['fieldu'] if self.userupa else fformat['fieldf'],
+            wfield = fformat['fieldu'] if self.updators & self.pagelist.userupdate else fformat['fieldf'],
             whelp  = fformat['fhelp'] if hasattr(self, 'doclink') else '',
         )
+        if hasattr(self,'label') and self.label=='current analogue gain':
+            print('updators', self.updators, 'pagey', self.pagelist.userupdate, 'combined', self.updators & self.pagelist.userupdate)
         return fullf.format(wl=self, tattrs=attrstr)
 
     @property
@@ -172,7 +199,7 @@ class wwlink():
     @property
     def webvalue(self):
         """
-        returns a string representation of the field's current value
+        returns a string representation of the field's current value, uses a format it available
         """
         return str(self.varvalue) if self.liveformat is None else self.liveformat.format(wl=self)
 
@@ -184,7 +211,7 @@ class wwlink():
         """
         if len(webval) == 1:
             try:
-                self.wable.setValue(webval[0], self.userupa)
+                self.wable.setValue(webval[0], self.pagelist.userupdate)
             except ValueError:
                 return {'OK': False, 'fail': 'invalid value for this field (%s)' % webval[0]}
             return {'OK': True, 'value': self.webvalue}
@@ -212,7 +239,7 @@ class wwenum(wwlink):
     """
     @property
     def webvalue(self):
-        if self.userupa:
+        if self.updators & self.pagelist.userupdate:
             cval=self.wable.getValue()
             opts=[
                 '<option value="{oval}"{sel}>{odisp}</option>'.format(
@@ -234,7 +261,7 @@ class wwenumbtn(wwlink):
         """
         if len(webval) == 1:
             try:
-                self.wable.increment(self.userupa)
+                self.wable.increment(self.pagelist.userupdate)
             except ValueError:
                 return {'OK': False, 'fail': 'invalid value for this field (%s)' % webval[0]}
             return {'OK': True, 'value': self.webvalue}
@@ -246,7 +273,8 @@ class wwbutton(wwlink):
     def websetter(self, webval):
         if len(webval) == 1:
             try:
-                self.wable.setValue(1, self.userupa)
+                self.wable.setValue(1, self.pagelist.userupdate)
+                self.wable.setValue(1, self.pagelist.userupdate)
             except ValueError:
                 return {'OK': False, 'fail': 'invalid value for this field (%s)' % webval[0]}
             return {'OK': True, 'value': self.webvalue}

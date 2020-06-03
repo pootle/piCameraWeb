@@ -2,156 +2,95 @@
 """
 gpio pin monitor activity
 
-Simple version - no debounce
+sets status watchablevar whe triggered. Provides simple debounce using pipgio facilities
 """
-try:
-    import pigpio
-    PIGPIO=True
-except:
-    PIGPIO=False
+import pigpio
 
 import time
 from pootlestuff import watchables as wv
 
-class gpiotrigger():
-    def __init__(self, camapp, settings, loglevel=wv.loglvls.INFO):
-        self.camapp=camapp
-        self.loglevel=loglevel
-        if not PIGPIO:
-            stat='unavailable'
-            self.log(wv,loglvls.WARN,'unable to import PIGPIO')
-        else:
-            try:
-                pp=pigpio.pi()
-                if pp.connected:
-                    stat='off'
-                else:
-                    self.log(wv.loglvls.WARN, 'pigpio is not connecting')
-                    stat='broken'
-                pp.stop()
-            except:
-                stat='broken'
-                self.log(wv.loglvls.WARN, 'exception starting pigpio')
-        self.agentclass=self.camapp.agentclass
-        self.status = wv.enumWatch(app=self, vlist=('off', 'watching', 'triggered', 'unavailable', 'broken'), value=stat)
-        self.usertrigger= wv.enumWatch(app=self, vlist=('set trigger','release trigger'), value='set trigger')
+class gpiotrigger(wv.watchablepigpio):
+    """
+    an activity that watches a gpio pin and sets a status when the pin level changes.
+    
+    Can deglitch the pin using pigpio facilities and also allows the trigger to be set by the
+    user for testing (or any other reason.
+    
+    The pin is always watched, but the trigger state is only set if the activity is 'on' 
+    """
+    def __init__(self, app=None, **kwargs):
+        wables=[
+            ('status',          wv.enumWatch,       'off',          False,  {'vlist': ('off', 'watching', 'triggered')}),
+            ('usertrigger',     wv.enumWatch,       'set trigger',  False,  {'vlist': ('set trigger','release trigger')}),
+            ('pintrigger',      wv.enumWatch,       'off',          False,  {'vlist': ('off', 'on')}),
+            ('startstopbtn',    wv.enumWatch,       'start',        False,  {'vlist': ('start','stop')}),     
+            ('autostart',       wv.enumWatch,       'off',          True,   {'vlist': ('off', 'on')}),
+            ('pinno',           wv.intWatch,        17,             True,   {'minv': 0, 'maxv': 27}),
+            ('pullud',          wv.enumWatch,       'none',         True,   {'vlist': ('none','up','down')}),
+            ('triglvl',         wv.enumWatch,       'high',         True,   {'vlist': ('high', 'low')}),
+            ('steadytime',      wv.floatWatch,      .1,             True,   {'minv': 0, 'maxv': 30}),
+            ('holdtime',        wv.floatWatch,      .5,             True,   {'minv': 0, 'maxv': 30}),
+            ('trigcount',       wv.intWatch,        0,              False),
+            ('lastactive',      wv.floatWatch,      float('nan'),   False),
+            ('lasttrigger',     wv.floatWatch,      float('nan'),   False),
+        ]
+        if app is None:
+            wables.append(('save_settingsbtn', wv.btnWatch,        'Save settings',False))
+        super().__init__(app=app, wabledefs=wables, **kwargs)
+        if self.autostart.getIndex()==1:                # if autostart is on, flip the start/stop button
+            self.startstopbtn.setIndex(1, wv.myagents.app)
+        monpin=self.pinno.getValue()
+        self.pio.set_mode(monpin, pigpio.INPUT)
+        self.pio.set_pull_up_down(monpin, {'none': pigpio.PUD_OFF, 'up': pigpio.PUD_UP, 'down': pigpio.PUD_DOWN}[self.pullud.getValue()])
+        steady = round(self.steadytime.getValue()*1000000)
+        if steady > 0:
+            hold=round(self.holdtime.getValue()*1000000)
+            if hold > 0:
+                self.pio.set_noise_filter(monpin, steady, hold)
+            else:
+                self.pio.set_glitch_filter(monpin, steady)
+        self.pigpcb=self.pio.callback(monpin, pigpio.EITHER_EDGE, self.level_change_detected)
+        
         self.usertrigger.addNotify(self.usersetclear,  wv.myagents.user)
-        self.settings=settings
-        if stat=='off':
-            self.autostart  = wv.enumWatch(app=self, vlist=('off', 'on'), value='off')
-            self.pinno      = wv.intWatch(app=self, minv=0, maxv=27, value=17)
-            self.pullud     = wv.enumWatch(app=self, vlist=('none','up','down'), value='none')
-            self.triglvl    = wv.enumWatch(app=self, vlist=('none','up','down'), value='none')
-            self.steadytime = wv.floatWatch(app=self, minv=0, maxv=.3, value=.1)
-            self.holdtime   = wv.floatWatch(app=self, minv=0, maxv=1, value=.5)
-            self.startstopbtn= wv.enumWatch(app=self, vlist=('start','stop'), value='start')
-            self.trigcount  = wv.intWatch(app=self, value=0)
-            self.lastactive = wv.floatWatch(app=self, value=float('nan'))
-            self.lasttrigger= wv.floatWatch(app=self, value=float('nan'))
-            for setw, setv in self.settings.items():
-                if hasattr(self, setw):
-                    try:
-                        getattr(self, setw).setValue(setw, wv.myagents.app)
-                        self.log(wv.loglvls.INFO, 'set %s to %s OK' % (setw, setv))
-                    except:
-                        self.log(wv.loglvls.WARN, 'set %s to %s failed' % (setw, setv))
-            self.pigp=None
-            self.startstopbtn.addNotify(self.startstop,  wv.myagents.user)
-            self.log(wv.loglvls.INFO, 'trigger activity set up OK')
-        else:
-            self.pigp=None
-            self.log(wv.loglvls.INFO, 'trigger activty set up failed - pigpio %s' % stat)
-
+        self.startstopbtn.addNotify(self.startstop,  wv.myagents.user)
+        if app is None:
+            self.save_settingsbtn.addNotify(self.savesettings, wv.myagents.user)  # this function is in the ancestor class, but we add the ability to use it here
+        self.log(wv.loglvls.INFO, 'trigger activity set up OK')
+           
     def usersetclear(self, watched, agent, newValue, oldValue):
-        if self.usertrigger.getIndex()==1: # user sets trigger manually
-            if self.status.getIndex()!=2:  # 2 -> already triggered by gpio pin - do nothing
-                self.status.setIndex(2, wv.myagents.app)
-                self.lasttrigger.setValue(time.time(), wv.myagents.app)
+        if self.usertrigger.getIndex()==1:      # user sets trigger manually
+            if self.status.setIndex(2, wv.myagents.app):
+                self.lasttrigger.setValue(time.time(), wv.myagents.app)     # only do this if the value changed
                 self.trigcount.increment(wv.myagents.app)
         else: # clear manual user trigger
-            if self.pigp:       # first check if gpio pin is triggered and leave status if it is
-                pinhigh=self.pigp.read(self.pinno.getValue())==1
-                if self.triglvl.getValue()=='low':
-                    pinhigh=not pinhigh
-                if not pinhigh:
-                    self.status.setIndex(1, wv.myagents.app)
-                    self.lasttrigger.setValue(time.time(), wv.myagents.app)
-            else:
-                if PIGPIO:
-                    if hasattr(self, 'startstopbtn'):
-                        if self.startstopbtn.getIndex()==0:
-                            newstatus='off'
-                        else:
-                            newstatus='watching'
-                    else:
-                        newstatus='broken'
-                else:
-                    newstatus = 'unavailable'
-                self.status.setValue(newstatus, wv.myagents.app)
+            if self.pintrigger.getIndex()==0:                               # check if pin is triggered
+                                                                            # and set status off or watching as appropriate
+                self.status.setIndex(1 if self.startstopbtn.getIndex()==1 else 0, wv.myagents.app)                    
                 self.lasttrigger.setValue(time.time(), wv.myagents.app)
 
-    def startstop(self, watched, agent, newValue, oldValue):
+    def startstop(self, watched, agent, newValue, oldValue):                # user started or stopped the activity
         if self.startstopbtn.getIndex() == 1: # user clicked on Start
-            assert self.pigp is None
-            self.pigp=pigpio.pi()
-            if self.pigp.connected:
-                monpin=self.pinno.getValue()
-                self.pigp.set_mode(monpin, pigpio.INPUT)
-                self.pigp.set_pull_up_down(monpin, {'none': pigpio.PUD_OFF, 'up': pigpio.PUD_UP, 'down': pigpio.PUD_DOWN}[self.pullud.getValue()])
-                steady = round(self.steadytime.getValue()*1000000)
-                if steady > 0:
-                    hold=round(self.holdtime.getValue()*1000000)
-                    if hold > 0:
-                        self.pigp.set_noise_filter(monpin, steady, hold)
-                    else:
-                        self.pigp.set_glitch_filter(monpin, steady)
-                self.pigpcb=self.pigp.callback(monpin, pigpio.EITHER_EDGE, self.level_change_detected)
-                pinhigh=self.pigp.read(monpin)==1
-                if self.triglvl.getValue()=='low':
-                    pinhigh=not pinhigh
-                self.status.setIndex(2 if pinhigh else 1, wv.myagents.app)
-                if pinhigh:
+            if self.pintrigger.getIndex()==1:
+                if self.status.setIndex(2, wv.myagents.app): # set status if pin already triggered, but only update other things if it changed
                     self.lasttrigger.setValue(time.time(), wv.myagents.app)
                     self.trigcount.increment(wv.myagents.app)
-                self.lastactive.setValue(time.time(), wv.myagents.app)
-            else:
-                self.pigp.stop()
-                self.pigp=None
-                self.status.setIndex(0, wv.myagents.app)
-        else:
-            self.closegpio()
-            self.status.setIndex(0, wv.myagents.app)
-
-    def closegpio(self):
-        if not self.pigp is None:
-            self.pigpcb.cancel()
-            self.pigp.set_pull_up_down(self.pinno.getValue(), pigpio.PUD_OFF)
-            self.pigpcb=None
-            self.pigp.stop()
-            self.pigp=None
             self.lastactive.setValue(time.time(), wv.myagents.app)
-
-    def closeact(self):
-        self.closegpio()
+        else:
+            if self.usertrigger.getIndex()==0: # user trigger is off, so clear status
+                if self.status.setIndex(0, wv.myagents.app):
+                    self.lasttrigger.setValue(time.time(), wv.myagents.app)
 
     def level_change_detected(self, gpiopin, level, tick):
         pinhigh=level==1
         if self.triglvl.getValue()=='low':
             pinhigh=not pinhigh
-        newv=1 if pinhigh else 0
-        if newv==1:
-            self.lastactive.setValue(time.time(), wv.myagents.app)
-            self.trigcount.increment(wv.myagents.app)
-            self.status.setIndex(2, wv.myagents.app)
+        if pinhigh:
+            self.pintrigger.setIndex(1, wv.myagents.app)
+            if self.startstopbtn.getIndex() == 1: # and we are watching
+                if self.status.setIndex(2, wv.myagents.app):    # set the status and if it changed.....
+                    self.lastactive.setValue(time.time(), wv.myagents.app)
+                    self.trigcount.increment(wv.myagents.app)
         else:
-            if self.usertrigger.getIndex()==0:
+            if self.usertrigger.getIndex()==0:                  # user trigger isn't set - so clear 
                 self.lastactive.setValue(time.time(), wv.myagents.app)
-                self.trigcount.increment(wv.myagents.app)
-                self.status.setIndex(1, wv.myagents.app)
-
-    def log(self, loglevel, *args, **kwargs):
-        """
-        request a logging operation. This does nothing if the given loglevel is < the loglevel set in the object
-        """
-        if self.loglevel.value <= loglevel.value:
-            self.camapp.log(loglevel, *args, **kwargs)
+                self.status.setIndex(1 if self.startstopbtn.getIndex()==1 else 0, wv.myagents.app)

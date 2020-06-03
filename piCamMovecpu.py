@@ -6,30 +6,32 @@ import numpy.ma as nma
 import png, io
 from pootlestuff import watchables as wv
 
-class piCamCPU():
+class piCamCPU(wv.watchablesmart):
     """
     a base class for things that want to analyse images in detail for movement detection, exposure adjustment or anything else.
     
     It uses picamera to resize frames (to reduce processing load and reduce noise, pulls out each frame and passes it to 
     an analyser.
     """
-    def __init__(self, camapp, settings, statusvals, startbtnvals, loglevel=wv.loglvls.INFO):
+    def __init__(self, statusvals, wabledefs, startbtnvals, loglevel=wv.loglvls.INFO, **kwargs):
         assert hasattr(self, 'monitor')
-        self.camapp=camapp
-        self.agentclass=self.camapp.agentclass
+        super().__init__(wabledefs=[
+            ('status',      wv.enumWatch,       statusvals[0],          False,      {'vlist': statusvals}),
+            ('startstopbtn',wv.enumWatch,       startbtnvals[0],        False,      {'vlist': startbtnvals}),
+            ('autostart',   wv.enumWatch,       'off',                  True,       {'vlist': ('off', 'on')}),
+            ('width',       wv.intWatch,        128,                    True,       {'minv': 8, 'maxv': 800}),
+            ('height',      wv.intWatch,        96,                     True,       {'minv': 6, 'maxv': 600}),
+            ('lastactive',  wv.floatWatch,      float('nan'),           False),
+            ('imagemode',   wv.enumWatch,       'rgb',                  True,       {'vlist': ('rgb', 'yuv')}),
+            ('imagechannel',wv.enumWatch,       '0',                    True,       {'vlist': ('0','1','2', '*')}),
+            ('skippedcount',wv.intWatch,        0,                      False),
+            ('analysedcount',wv.intWatch,       0,                      False),           
+        ]+wabledefs,
+        **kwargs)
+        self.agentclass=self.app.agentclass
         self.monthread=None
         self.procthread=None
         self.loglevel=loglevel
-        self.status         = wv.enumWatch(app=self, vlist=statusvals, value=statusvals[0])
-        self.startstopbtn   = wv.enumWatch(app=self, vlist=startbtnvals, value=startbtnvals[0])
-        self.autostart      = wv.enumWatch(app=self, vlist=('off', 'on'), value='off')
-        self.width          = wv.intWatch(app=self, minv=8, maxv=800, value=128)
-        self.height         = wv.intWatch(app=self, minv=6, maxv=600, value=96)
-        self.lastactive     = wv.floatWatch(app=self, value=float('nan'))
-        self.imagemode      = wv.enumWatch(app=self, vlist = ('rgb', 'yuv'), value='rgb')
-        self.imagechannel   = wv.enumWatch(app=self, vlist = ('0','1','2', '*'), value='0')
-        self.skippedcount   = wv.intWatch(app=self, value=0)
-        self.analysedcount  = wv.intWatch(app=self, value=0)
         if self.autostart.getIndex()==1:
             self.startstopbtn.setIndex(1,wv.myagents.app)
             self.running=True
@@ -76,7 +78,7 @@ class piCamCPU():
             time.sleep(startdelay)
         self.status.setIndex(1, self.agentclass.app)
         self.lastactive.setValue(time.time(), self.agentclass.app)
-        picam=self.camapp.startCamera()
+        picam=self.app.startCamera()
         resize=((self.width.getValue()+31) // 32 * 32, (self.height.getValue()+15) // 16 * 16)
         self.freebuffs=queue.Queue()
         arraytype=picamarray.PiRGBArray if self.imagemode.getValue()=='rgb' else picamarray.PiYUVArray
@@ -84,7 +86,7 @@ class piCamCPU():
             self.freebuffs.put(arraytype(picam, size=resize))
         self.camerabuff=None        # the buffer currently being filled
         self.pendingbuffs=queue.Queue(maxsize=1) # and a queue of buffers we want to analyse  - restricted to 1 - just using threadsafeness
-        splitter_port=self.camapp._getSplitterPort(type(self).__name__)
+        splitter_port=self.app._getSplitterPort(type(self).__name__)
         self.log(wv.loglvls.INFO, 'cpu move detect using port %d and image size %s' % (splitter_port, resize))
         time.sleep(.1)
         self.condition=None # used to trigger detection overlay streaming
@@ -96,7 +98,7 @@ class piCamCPU():
         self.camerabuff=None
         self.pendingbuffs=None
         self.freebuffs=None
-        self.camapp._releaseSplitterPort(type(self).__name__, splitter_port)
+        self.app._releaseSplitterPort(type(self).__name__, splitter_port)
         self.lastactive.setValue(time.time(), self.agentclass.app)
         self.monthread=None
         self.analthread.join()
@@ -195,37 +197,39 @@ class MoveDetectCPU(piCamCPU):
     
     Starting with the second buffer, the analysis thread picks 1 channel from the buffer and compares it with previous frame to check for differences.
     """
-    def __init__(self, **kwargs):
+    def __init__(self, statusvals=('off', 'watching', 'triggered'), startbtnvals=('start watching', 'stop watching'), **kwargs):
         """
         initialisation just sets up the vars used.
         """
-        super().__init__(statusvals=('off', 'watching', 'triggered'), startbtnvals=('start watching', 'stop watching'), **kwargs)
-        self.triggercount   = wv.intWatch(app=self, value=0)
-        self.lasttrigger    = wv.floatWatch(app=self, value=float('nan'))
-        self.cellthresh     = wv.intWatch(app=self, minv=1, maxv=255, value=22)
-        self.celltrigcount  = wv.intWatch(app=self, minv=1, value=100)
-        self.latchtime      = wv.floatWatch(app=self, value=.4)
-        self.maskfold       = wv.folderWatch(app=self, value='~/camfiles/masks')
-        self.maskfile       = wv.textWatch(app=self, value='-off-')
-        self.overruns       = wv.intWatch(app=self, value=0)
-        self.analbusy       = wv.floatWatch(app=self, value=0)
-        self.analcpu        = wv.floatWatch(app=self, value=0)
+        super().__init__(statusvals=statusvals, startbtnvals=startbtnvals, wabledefs=[
+                ('triggercount',    wv.intWatch,    0,                  False),
+                ('lasttrigger',     wv.floatWatch,  float('nan'),       False),
+                ('cellthresh',      wv.intWatch,    22,                 True,       {'minv': 1, 'maxv': 255}),
+                ('celltrigcount',   wv.intWatch,    100,                True,       {'minv': 1}),
+                ('latchtime',       wv.floatWatch,  4,                  True),
+                ('maskfold',        wv.folderWatch, '~/camfiles/masks', True),
+                ('maskfile',        wv.textWatch,   '-off-',            True),
+                ('overruns',        wv.intWatch,    0,                  False),
+                ('analbusy',        wv.floatWatch,  0,                  False),
+                ('analcpu',         wv.floatWatch,  0,                  False),
+            ], **kwargs)
+
         self.running=False
 
-    def fetchmaskinfo(self, parsedpath, requinfo, t):
+    def fetchmasksize(self):
         """
         called from web server to retrieve info about mask in preparation for editing
         """
         rr={'width'     : self.width.getValue(),
             'height'    : self.height.getValue(),
             }
-        return True, rr
+        return rr
 
     def savemask(self, pathinf, name, mask):
         """
         called from webserver when user saves a mask after editing
         """
-        mfile=(self['maskfold'].getValue()/name).with_suffix('.png')
+        mfile=(self.maskfold.getFolder()/name).with_suffix('.png')
         print('savemask (%3d/%3d) to %s  (%s): ' % (len(mask[0]), len(mask), name, mfile))
         pw = png.Writer(len(mask[0]), len(mask), greyscale=True, bitdepth=1)
         with mfile.open('wb') as fff:
@@ -241,7 +245,7 @@ class MoveDetectCPU(piCamCPU):
         """
         if True:
             return super().preparearray()
-#        if self.maskfile.getIndex()==0:
+        if self.maskfile.getValue()=='-off-':
             return dataarray
         else:
             mfile=(self.maskfold.getValue()/self.maskfile.getValue()).with_suffix('.png')
@@ -362,13 +366,6 @@ class MoveDetectCPU(piCamCPU):
             return self.frame, 'image/png', len(self.frame)
         else:
             raise StopIteration()
-
-    def log(self, loglevel, *args, **kwargs):
-        """
-        request a logging operation. This does nothing if the given loglevel is < the loglevel set in the object
-        """
-        if self.loglevel.value <= loglevel.value:
-            self.camapp.log(loglevel, *args, **kwargs)
 
 detpalette=(
     (0.5, (  0,   0,   0,   0)),        # totally transparent black below 1/2 threshold

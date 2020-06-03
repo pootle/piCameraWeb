@@ -1,0 +1,126 @@
+<html>
+    <header>
+        <script src="static/pymon.js"></script>
+        <script src="static/nouislider.js"></script>
+        <script src="static.pymask.js"></script>
+        <script type="text/javascript">
+            window.onload=startup
+
+            function startup() {{
+                liveupdates("{pageid}");
+                var hslider = document.getElementById("hslider");
+                if (hslider) {{
+                    var zl=document.getElementById("cam_zoom_left");
+                    var zr=document.getElementById("cam_zoom_right");
+                    if (zl && zr) {{
+                        noUiSlider.create(hslider, {{
+                            start: [zl.value, zr.value],
+                            connect: true,
+                            range: {{
+                                "min": 0,
+                                "max": 1
+                            }}
+                        }});
+                        hslider.noUiSlider.on('end', zoomupdate);
+                    }}
+                }}
+                var vslider = document.getElementById("vslider");
+                if (vslider) {{
+                    var zt=document.getElementById("cam_zoom_top");
+                    var zb=document.getElementById("cam_zoom_bottom");
+                    if (zt && zb) {{
+                        noUiSlider.create(vslider, {{
+                            start: [parseFloat(zt.value)+10, parseFloat(zb.value)+10],
+                            orientation: 'vertical',
+                            connect: true,
+                            range: {{
+                                "min": 10,
+                                "max": 11
+                            }}
+                        }});
+                        vslider.noUiSlider.on('end', zoomupdate);
+                    }}
+                }}
+            }}
+            
+            function zoomupdate(values, handle, unencoded, tap, positions, noUiSlider) {{
+                console.log(values);
+                var firstv=parseFloat(values[0]);
+                if (firstv < 2) {{
+                    var zl=document.getElementById("cam_zoom_left");
+                    zl.value=values[0];
+                    appNotify(zl, {pageid});
+                    var zr=document.getElementById("cam_zoom_right");
+                    zr.value=values[1];
+                    appNotify(zr, {pageid});
+                }} else if (firstv < 12) {{
+                    var zt=document.getElementById("cam_zoom_top");
+                    zt.value=parseFloat(values[0])-10;
+                    appNotify(zt, {pageid});
+                    var zb=document.getElementById("cam_zoom_bottom");
+                    zb.value=parseFloat(values[1])-10;
+                    appNotify(zb, {pageid});
+                }}
+            }}
+            
+            function zoomreset() {{
+                zl=document.getElementById("cam_zoom_left");
+                zl.value=0
+                appNotify(zl, {pageid});
+                zr=document.getElementById("cam_zoom_right");
+                zr.value=1;
+                appNotify(zr, {pageid});
+                var hslider = document.getElementById("hslider");
+                hslider.noUiSlider.set([0,1]);
+                zt=document.getElementById("cam_zoom_top");
+                zt.value=0;
+                appNotify(zt, {pageid});
+                zb=document.getElementById("cam_zoom_bottom");
+                zb.value=1;
+                appNotify(zb, {pageid});
+                var vslider = document.getElementById("vslider");
+                vslider.noUiSlider.set([10,11]);
+            }}
+        </script>
+        <link rel="stylesheet" href="static/some.css">
+        <link rel="stylesheet" href="static/nouislider.css">
+    </header>
+    <body><form autocomplete="off">
+       <div>
+           {camstat}
+       </div>
+       <div class="overpnl">
+           <div>
+               <div>
+                   <span onclick="livestreamflip(this)" title="click to start / stop live view" class="btnlike" style="width:135px;" >show livestream</span>
+                   <span onclick="detstreamflip(this)" title="click to start / stop cpu detection overlay" class="btnlike" style="width:135px;" >show detection</span>
+                   <span onclick="maskeditflip(this)" title="click to start / stop cpu mask edit" class="btnlike" style="width:135px;" >edit mask</span>
+                   <span class="btnlike" style="border-left:15px; width: 135px;" ><a href="filer.html">show files</a></span>
+               </div>
+               <table>
+                <col style="width:15px;">
+                <col style="width:700px;">
+                <col style="width:15px;">
+                   <tr><td><span onclick="zoomreset()" title="click to reset zoom" style="cursor: pointer; font-weight: bold;" >R</span></td>
+                        <td><div id="hslider" style="margin-left: 15px; margin-right: 15px; " ></div></td><td></td></tr>
+                   <tr><td><div id="vslider" style="height:600px; margin-top: 15px; margin-bottom: 15px; " ></div></td>
+                        <td colspan="2" ><div style="position: relative; height: 600px; width: 800px;">
+                        <img id="livestreamimg" src="static/nocam.png" width="800px" height="600px" style="z-index:1;"/>
+                        <div id="detstreamdiv" style="display:none; position:absolute; top:0px; left:0px; width:100%; height:100%; z-index:2;"></div>
+                        <div id="livemaskdiv" style="display:none; position:absolute; top:0px; left:0px; width:100%; height:100%; z-index:3;">
+                                  <canvas id="livemaskcanv"></canvas>
+                        </div>
+                   </div></td></tr>
+               </table>
+           </div>
+       </div>
+        <h3>hello from app1</h3>
+        <table style="border-spacing: 0px;">
+           <col style="width:220px;">
+           <col style="width:320px;">
+           <col style="width:90px;">
+            {camsettings}
+            {actparts}
+        </table>
+    </form></body>
+</html>

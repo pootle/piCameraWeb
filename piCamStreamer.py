@@ -12,7 +12,7 @@ from enum import Flag, auto
 
 from picamera.exc import PiCameraNotRecording
 
-class Streamer(wv.watchableAct):
+class Streamer(wv.watchablesmart):
     """
     An activity that provides the live streaming service as a sequence of frames.
     

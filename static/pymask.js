@@ -24,11 +24,10 @@ function maskeditflip(btnel) {
     if (btnel.innerHTML =='edit mask') {
         btnel.innerHTML="fetching mask";
         if (confirm('edit current mask? (cancel to start new mask)')) {
-            ff="fetchmask?t=old"
+            ff="fetchmasklist"
         } else {
-            ff="fetchmask?t=new"
+            fetchmasksize(btnel)
         }
-        fetchmask(btnel, ff)
     } else if (btnel.innerHTML =='fetching mask') {
         // do nothing
     } else if (btnel.innerHTML=='finish edit') {
@@ -49,6 +48,30 @@ function maskeditflip(btnel) {
         // do nothing
     } else {
          alert('ooops! ' +  btnel.innerHTML)
+    }
+}
+
+async function fetchmasksize(btnel) {
+    let response = await fetch("fetchmasksize");
+    if (response.ok) { // if HTTP-status is 200-299
+        let maskinf = await response.json();
+        if ("width" in maskinf) {
+            btnel.innerHTML="finish edit";
+            maskwidth=maskinf['width'];
+            maskheight=maskinf['height'];
+           detectmask=[];
+            for (var i=0;i<maskheight;i++) {
+                detectmask[i] = Array(maskwidth).fill(0);
+            }
+            maskname=null;
+            starteditmask();
+        } else {
+            alert('something wrong')
+            btnel.innerHTML= "edit mask";
+        }
+    } else {
+        alert("HTTP-Error: " + response.status);
+        btnel.innerHTML="edit mask";
     }
 }
 

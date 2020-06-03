@@ -9,7 +9,7 @@ import threading, queue, time, picamera, shutil
 from subprocess import Popen, PIPE
 
 class VideoRecorder(wv.watchableAct):
-    def __init__(self, app, settings, **kwargs):
+    def __init__(self, app, **kwargs):
         """
         initialisation just sets up the vars used.
         """
@@ -19,7 +19,7 @@ class VideoRecorder(wv.watchableAct):
         self.withsps=True
         self.activetriggers={}
         self.activetriglock=threading.Lock()
-        super().__init__(app=app, settings=settings, wabledefs=(
+        super().__init__(app=app, wabledefs=(
             ('status',      wv.enumWatch,       'off',              False,      {'vlist': ('off', 'waiting', 'recording')}),
             ('rec_width',   wv.intWatch,       640,                 True,       {'minv': 120, 'maxv': 2400}),
             ('rec_height',  wv.intWatch,       480,                 True,       {'minv': 90, 'maxv': 1600}),

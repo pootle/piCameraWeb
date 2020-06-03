@@ -23,13 +23,6 @@ import threading, json, pathlib, fractions
 
 from pootlestuff import watchables as wv
 
-try:
-    import pigpio
-    PIGPIO=True
-except:
-    PIGPIO=False
-
-
 class picamAttrMixin():
     """
     a mixin class for pforms classes that syncs the value with a PiCamera attribute when the camera is active.
@@ -101,7 +94,7 @@ class camGenericMode(picamAttrMixin, wv.enumWatch):
     """
     A class to handle settings that can take 1 value from a retrievable list, and can be set dynamically.
     """
-    def __init__(self, app, camAttr, camAttrList=None, **kwargs):
+    def __init__(self, app, camAttr, value, writeOK, camAttrList=None, **kwargs):
         """
         additional / used params:
      
@@ -112,10 +105,13 @@ class camGenericMode(picamAttrMixin, wv.enumWatch):
         """
         assert hasattr(app.picam, camAttr), 'the object of type %s does not have an attribute %s' % (type(app.picam).__name__, camAttr) 
         vlist=list(getattr(app.picam, (camAttr.upper()+'S') if camAttrList is None else camAttrList).keys())
+        if value is None:
+            value=vlist[0]
         super().__init__(app=app,
                         camAttr=camAttr, 
                         vlist=vlist,
-                        value=getattr(app.picam,camAttr),
+                        value=value if writeOK else getattr(app.picam,camAttr),
+                        writeOK=writeOK,
                         **kwargs)
 #        self.log(wv.loglvls.DEBUG,'camera %s set to %s from list %s' % (camAttr, getattr(app.picam,camAttr), vlist))
 
@@ -136,13 +132,14 @@ class camResolution(wv.enumWatch):
         'testc'  : (('special', '4056x3040', '2028x1520', '1012x760', '1080p', '720p', '480p'),'2028x1520')
         }
 
-    def __init__(self, app, **kwargs):
+    def __init__(self, app, value, **kwargs):
         """
         app is a cameraHandler object with camType already setup
         """
         assert app.camType in self.resolutions, 'unknown camera type %s' % app.camType
         camprops=self.resolutions[app.camType]
-        super().__init__(value=camprops[1], app=app,
+        useval=camprops[1] if value is 0 or not value in camprops[0] else value
+        super().__init__(value=useval, app=app,
                 vlist=camprops[0],
                 **kwargs)
 
@@ -165,9 +162,9 @@ class camRotation(picamAttrMixin, wv.enumWatch):
             raise ValueError('value (%s) not valid' % value)
         return ival
 
-class camHflip(picamAttrMixin, wv.enumWatch):
+class camflip(picamAttrMixin, wv.enumWatch):
     """
-    camera horizontal flip
+    camera horizontal / vertical flip
     """
     def __init__(self, camAttr='hflip', **kwargs):
         super().__init__(
@@ -203,14 +200,16 @@ class camFract(picamAttrMixin, wv.floatWatch):
     def validValue(self, value, agent):
         return super().validValue(value.numerator/value.denominator if isinstance(value, fractions.Fraction) else value, agent)
 
-class cameraManager(wv.watchableApp):
+
+
+class cameraManager(wv.watchablesmart):
     """
     This class prepares all the settings that can be applied to a picamera.PiCamera and manages the running camera
-    with its assocoated activities.
+    with its associated activities.
     
     It sets up for 4 potential video splitter ports, and initialises them to None to show they are unused.
     """
-    def __init__(self, settingsfile= '~/camsettings.cfg', **kwargs):
+    def __init__(self, acts, **kwargs):
         """
         Runs the camera and everything it does as well as other camera related activities
         """
@@ -218,83 +217,66 @@ class cameraManager(wv.watchableApp):
         self.cameraTimeout=None
         self.activityports=[None]*3
         self.running=True
-        super().__init__(**kwargs)
+        wables=[
+            ('cam_framerate',   wv.floatWatch,      20,     True,   {'maxv': 100, 'minv': .001}),
+            ('cam_resolution',  camResolution,      0,      True),
+            ('cam_u_width',     wv.intWatch,        640,    True,   {'minv': 64, 'maxv': 5000}),
+            ('cam_u_height',    wv.intWatch,        480,    True,   {'minv': 48, 'maxv': 5000}),
+            ('cam_rotation',    camRotation,        0,      True),
+            ('cam_hflip',       camflip,           False,   True),
+            ('cam_vflip',       camflip,           False,   True,   {'camAttr': 'vflip'}),
+            ('cam_awb_mode',    camGenericMode,     'auto', True,   {'camAttr': 'awb_mode', 'readOK': False, 'writeOK':  True}),
+            ('cam_exposure_mode',camGenericMode,    'auto', True,   {'camAttr': 'exposure_mode', 'readOK': False, 'writeOK': True}),
+            ('cam_meter_mode',  camGenericMode,     None,   True,   {'camAttr': 'meter_mode', 'readOK': False, 'writeOK': True}),
+            ('cam_drc_strength',camGenericMode,     'off',  True,   {'camAttr': 'drc_strength', 'readOK': False, 'writeOK': True}),
+            ('cam_contrast',    camInt,             0,      True,   {'camAttr': 'contrast', 'readOK': False, 'writeOK': True}),
+            ('cam_brightness',  camInt,             50,     True,   {'camAttr': 'brightness', 'readOK': False, 'writeOK': True}),
+            ('cam_exp_comp',    camInt,             0,      True,   {'camAttr': 'exposure_compensation', 'readOK': False, 'writeOK': True}),
+            ('cam_iso',         camISO,             0,      True),
+            ('cam_exp_speed',   camInt,             0,      False,  {'camAttr': 'exposure_speed', 'readOK': True, 'writeOK': False}),
+            ('cam_shutter_speed',camInt,            0,      True,   {'camAttr': 'shutter_speed', 'readOK': False, 'writeOK': True}),
+            ('cam_analog_gain', camFract,           0,      False,  {'camAttr': 'analog_gain', 'readOK': True, 'writeOK': False}),
+            ('cam_digital_gain',camFract,           0,      False,  {'camAttr': 'digital_gain', 'readOK': True, 'writeOK': False}),
+            ('zoomleft',        wv.floatWatch,      0,      True,   {'maxv': 1, 'minv': 0}),
+            ('zoomright',       wv.floatWatch,      1,      True,   {'maxv': 1, 'minv': 0}),
+            ('zoomtop',         wv.floatWatch,      0,      True,   {'maxv': 1, 'minv': 0}),
+            ('zoombottom',      wv.floatWatch,      1,      True,   {'maxv': 1, 'minv': 0}),
+            ('cam_state',       wv.enumWatch,       'closed',False, {'vlist': ('open', 'closed'), 'wrap': False, 'clamp': False}),
+            ('cam_summary',     wv.textWatch,       'closed',False),
+            ('cam_autoclose',   wv.enumWatch,       'auto close', True, {'vlist': ('keep open', 'auto close')}),
+            ('cam_autoclose_time',wv.intWatch,       5,     True,   {'minv': 1, 'maxv': 600, 'clamp': True}),
+            ('cam_close_btn',   wv.btnWatch,        'close camera', False),
+            ('savedefaultbtn',  wv.btnWatch,        'Save', False),          
+        ]
         with picamera.PiCamera() as tempcam:
-            self.log(wv.loglvls.INFO, 'camera opened OK %s' % self)
             self.camType=tempcam.revision
             self.picam=tempcam
-            self.cam_framerate=wv.floatWatch(maxv=100, minv=.001, app=self, value=30)
-            self.cam_resolution=camResolution(app=self)
-            self.cam_u_width=wv.intWatch(app=self, maxv=5000, minv=64, value=640)
-            self.cam_u_height=wv.intWatch(app=self, maxv=5000, minv=48, value=480)
-            self.cam_rotation=camRotation(app=self, value=0, )
-            self.cam_hflip=camHflip(app=self, value=False, **kwargs)
-            self.cam_awb_mode=camGenericMode(app=self, camAttr='awb_mode', readOK=False, writeOK= True)
-            self.cam_exposure_mode=camGenericMode(app=self, camAttr='exposure_mode', readOK=False, writeOK=True)
-            self.cam_meter_mode=camGenericMode(app=self, camAttr='meter_mode', readOK=False, writeOK=True)
-            self.cam_drc_strength=camGenericMode(app=self, camAttr='drc_strength', readOK=False, writeOK=True)
-            self.cam_contrast=camInt(app=self, camAttr='contrast', value=0, readOK=False, writeOK=True)
-            self.cam_brightness=camInt(app=self, camAttr='brightness', value=50, readOK=False, writeOK=True)
-            self.cam_exp_comp=camInt(app=self, camAttr='exposure_compensation', value=0, readOK=False, writeOK=True)
-            self.cam_iso=camISO(app=self, value=0)
-            self.cam_exp_speed=camInt(app=self, camAttr='exposure_speed', value=0, readOK=True, writeOK=False)
-            self.cam_shutter_speed=camInt(app=self, camAttr='shutter_speed', value=0, readOK=False, writeOK=True)
-            self.cam_analog_gain=camFract(app=self, camAttr='analog_gain', value=0, readOK=True, writeOK=False)
-            self.cam_digital_gain=camFract(app=self, camAttr='digital_gain', value=0, readOK=True, writeOK=False)
-            self.zoomleft=wv.floatWatch(maxv=1, minv=0, app=self, value=0)
-            self.zoomright=wv.floatWatch(maxv=1, minv=0, app=self, value=1)
-            self.zoomtop=wv.floatWatch(maxv=1, minv=0, app=self, value=0)
-            self.zoombottom=wv.floatWatch(maxv=1, minv=0, app=self, value=1)
+            super().__init__(wabledefs=wables, **kwargs)
             self.picam=None
         self.cam_framerate.addNotify(self.changeframerate, wv.myagents.user)
-        self.cam_state=wv.enumWatch(app=self, vlist=('open', 'closed'), value='closed', wrap=False, clamp=False)
-        self.cam_summary=wv.textWatch(app=self, value='closed')
-        self.cam_autoclose=wv.enumWatch(app=self, vlist=('keep open', 'auto close'), value='auto close')
-        self.cam_autoclose_time=wv.intWatch(app=self, minv=1, maxv=600, clamp=True, value=5)
-        self.cam_close_btn=wv.btnWatch(app=self, value='Close Camera')
         self.cam_close_btn.addNotify(self.force_close, wv.myagents.user)
-        self.savedefaultbtn=wv.btnWatch(app=self, value='Save')
         self.savedefaultbtn.addNotify(self.savesettings, wv.myagents.user)
         self.zoomleft.addNotify(self.newzoom, wv.myagents.user)
         self.zoomright.addNotify(self.newzoom, wv.myagents.user)
         self.zoomtop.addNotify(self.newzoom, wv.myagents.user)
         self.zoombottom.addNotify(self.newzoom, wv.myagents.user)
-        spath=pathlib.Path(settingsfile).expanduser()
-        settings={}
-        if spath.is_file():
-                with spath.open('r') as cs:
-                    try:
-                        savedset=json.load(cs)
-                        settings=savedset
-                    except:
-                        self.log(wv.loglvls.WARN,'FAILED loading settings from %s, defaults used' % (spath))
-        if 'camsettings' in settings:
-            for k,v in settings['camsettings'].items():
-                try:
-                    getattr(self,k).setValue(v, wv.myagents.app)
-                except Exception as e:
-                    self.log(wv.loglvls.WARN,'set %s to %s failed %s' % (k, v, type(e).__name__))
         self.activities={}
-        if 'activities' in settings:
-            actset=settings['activities']
-        else:
-            actset={'camstream': {'loglevel':wv.loglvls.DEBUG}, 'triggergpio': {}, 'triggervid': {}, 'cpumove': {}, 'focusser': {}}
-        self.log(wv.loglvls.INFO, '=======using acts %s' % list(actset.keys()))
-        if 'camstream'in actset:
+        actsettings=self.startsettings.get('acts', {})
+        if 'camstream' in acts:
             from piCamStreamWeb import webStream
-            self.activities['camstream'] = webStream(app=self, settings=actset['camstream'])
-        if 'triggergpio' in actset:
-            from triggergpioweb import gpiotrigweb
-            self.activities['triggergpio'] = gpiotrigweb(camapp=self, settings=actset['triggergpio'].get('settings', {}))
-        if 'triggervid' in actset:
+            self.activities['camstream'] = webStream(app=self, value=actsettings.get('camstream',{}))
+        if 'triggervid' in acts:
             from piCamRecordWeb import webVideoRec
-            self.activities['triggervid'] = webVideoRec(app=self, settings=actset['triggervid'])
-        if 'cpumove' in actset:
+            self.activities['triggervid'] = webVideoRec(app=self, value=actsettings.get('triggervid',{}))
+        if 'triggergpio' in acts:
+            from triggergpioweb import webtriggergpio
+            self.activities['triggergpio'] = webtriggergpio(app=self, value=actsettings.get('triggergpio', {}))
+        if 'cpumove' in acts:
             from piCamMovecpuWeb import webcpumove
-            self.activities['cpumove'] = webcpumove(camapp=self, settings=actset['cpumove'].get('settings', {}))
-        if 'focusser' in actset:
+            self.activities['cpumove'] = webcpumove(app=self, value=actsettings.get('cpumove',{}))
+        if 'focusser' in acts:
             from unipolarDirectWeb import webStepper
-            self.activities['focusser'] = webStepper(camapp=self, settings=actset['focusser'].get('settings', {}))
+            self.activities['focusser'] = webStepper(app=self, value=actsettings.get('focusser', {}))
         self.log(wv.loglvls.INFO,'closed camera after setup')
         threading.Thread(name='cammon', target=self.monitorloop).start()
 
@@ -316,20 +298,15 @@ class cameraManager(wv.watchableApp):
             return self.cam_resolution.getValue()
 
     def fetchsettings(self):
+        """
+        override the standard fetchsettings to add in settings for the activities
+        """
         acts={}
         for actname, act in self.activities.items():
             acts[actname]=act.fetchsettings() if hasattr(act, 'fetchsettings') else {}
-        return {
-            'camsettings': {sname: getattr(self,sname).getValue() for sname in (
-                    'cam_framerate', 'cam_resolution', 'cam_rotation', 'cam_hflip', 'cam_awb_mode', 'cam_exposure_mode', 'cam_meter_mode', 'cam_shutter_speed',
-                    'cam_iso', 'cam_drc_strength', 'cam_contrast', 'cam_brightness', 'cam_exp_comp', 'zoomleft', 'zoomright', 'zoomtop', 'zoombottom')},
-            'activities' : acts,
-        }
-
-    def savesettings(self, oldValue, newValue, agent, watched):
-        sp=pathlib.Path('~/camsettings.cfg').expanduser()
-        with sp.open('w') as jd:
-            json.dump(self.fetchsettings(), jd, indent=3)
+        setts=super().fetchsettings()
+        setts['acts']=acts
+        return setts
 
     def startCamera(self):
         """
@@ -396,7 +373,10 @@ class cameraManager(wv.watchableApp):
         if self.picam is None:
             self.log(wv.loglvls.INFO,"stop ignored - camera not running")
         else:
-            self.picam.close()
+            try:
+                self.picam.close()
+            except:
+                pass
             self.log(wv.loglvls.INFO, "pi camera closed")
             self.picam=None
             self.cam_state.setValue('closed', wv.myagents.app)
@@ -467,6 +447,9 @@ class cameraManager(wv.watchableApp):
                 self.startPortActivity(actname=actname, **kwargs)
             else:
                 self.startActivity(actname=actname, **kwargs)
+
+    def close(self):
+        self.safeStopCamera()
 
     def safeStopCamera(self):
         self.running=False

@@ -6,12 +6,9 @@ For example the el cheapo box of 10 28BYJ-48 steppers with ULN2003A based driver
 """
 
 import pigpio
-import threading, math
-import time
-from pootlestuff import watchables as wv
+import threading, math, logging, pathlib, time, json
 
-# the pins that control the 4 outputs in the proper order!
-defaultpins=(17, 23, 22,27)
+from pootlestuff import watchables as wv
 
 # steptables is a dict with keys that identify the various ways we can step the motor.
 # each key references a 2 part dict:
@@ -48,7 +45,8 @@ StepTables={
                    )},
 }
 
-class SimpleUniStepper(wv.watchableApp):
+
+class SimpleUniStepper(wv.watchablepigpio):
     """
     simple controller for a direct from pi (well via driver transistors) unipolar stepper.
     
@@ -87,9 +85,8 @@ class SimpleUniStepper(wv.watchableApp):
         'single' switches each pin in turn to full power
         'double' switches pairs of pins in turn to full power (more current and more torque)
         'two'    switches 1 pin to full power then that pin and an adjacent pin to 1/2 power, then the adjacent pin to full power....
-        
     """
-    def __init__(self, camapp, settings, pins=defaultpins, pio=None, stepdefs=StepTables, **kwargs):
+    def __init__(self, app=None, pio=None, stepdefs=StepTables, **kwargs):
         """
         pins:   list (like) of the 4 pins to drive the 4 outputs
         
@@ -97,55 +94,41 @@ class SimpleUniStepper(wv.watchableApp):
                   a new pigpio instance is setup and will be closed on exit
 
         stepdefs: dict that defines the various step modes to be used and details the power levels for each pin.
-        
-        settings: dict of previously saved values for appropriate variables that override the built-in defaults. 
 
         agentclass & loglevel: passed to super()
         
         The motor can be set to various drive modes which provide different functionality.
         """
-        self.camapp=camapp
-        self.loglevel=wv.loglvls.INFO
-        assert len(pins) == 4
-        for i in pins:
-            assert isinstance(i, int) and 0<i<32
-        if not pio is None:
-            ptest=pigpio.pi()
-            if not ptest.connected:
-                raise ValueError('no pigpio connection available')
-            ptest.stop()
-        self.pins=pins
-        self.pio=pio
         self.running=True
         self.stepdefs=stepdefs
-        super().__init__(agentclass=wv.myagents, loglevel=wv.loglvls.INFO)
-        self.status=wv.textWatch(app=self, value='starting')
-                                                        # a simple status string describing what the motor is doing
-        self.drive_mode=wv.enumWatch(app=self, vlist=('stop', 'off', 'run', 'goto'), value='off')
         mlist=list(self.stepdefs.keys())
-        self.drive_stepmode=wv.enumWatch(app=self, vlist=mlist, value=settings.get('drive_stepmode', mlist[0]))
-        self.drive_uStepPos=wv.intWatch(app=self, value=settings.get('drive_uStepPos', 0))                  
-                                                        # maintains the absolute (micro)step position since we started
-        self.drive_reverse=wv.enumWatch(app=self, vlist=('normal','reverse'), value=settings.get('drive_reverse', 'normal')) 
-                                                        # flips motor direction when set
-        self.drive_PWM_frequency=wv.intWatch(app=self, value=settings.get('drive_PWM_frequency',10000))
-                                                        # requested PWM frequency
-        self.drive_actual_frequency=wv.intWatch(app=self, value=0)          
-                                                        # actual PWM frequency
-        self.drive_hold_power=wv.floatWatch(app=self, minv=0, maxv=1, value=settings.get('drive_hold_power', .3)) 
-                                                        # power factor used when stationary
-        self.drive_slow_power=wv.floatWatch(app=self, minv=.5, maxv=1, value=settings.get('drive_slow_power', .7))
-                                                        # power factor when slow stepping
-        self.drive_slow_limit=wv.floatWatch(app=self, value=settings.get('drive_slow_limit', .01))
-                                                        # step interval above which slow power factor used
-        self.drive_fast_power=wv.floatWatch(app=self, value=settings.get('drive_fast_power', 1))
-                                                        # power factor for faster steps
-        self.drive_step_intvl=wv.floatWatch(app=self, value=float('nan'))   # initialise step interval to unknown (=> stopped) -ve reverse, +ve fwds
-        self.drive_target_intvl=wv.floatWatch(app=self, value=settings.get('drive_target_intvl', .1))
-                                                        # once moving, this is the interval between full steps
-        self.drive_target_pos=wv.intWatch(app=self, value=0)
-                                                        # for goto mode this is where we want to be
-        self.drive_backlash=wv.intWatch(app=self, value=settings.get('drive_backlash', 80))
+        wables=[
+               ('status',           wv.textWatch,       'starting',     False),     # a simple status string describing what the motor is doing
+               ('drive_mode',       wv.enumWatch,       'off',          True,   {'vlist': ('stop', 'off', 'run', 'goto')}), # see class help
+               ('drive_pins',       wv.textWatch,       '17 23 22 27',  True),    # list of the pins in use
+               ('drive_stepmode',   wv.enumWatch,       mlist[0],       True,   {'vlist': mlist}),
+               ('drive_uStepPos',   wv.intWatch,        0,              False),     # absolute pos in microsteps
+               ('drive_reverse',    wv.enumWatch,       'normal',       True, {'vlist': ('normal', 'reverse')}),
+               ('drive_PWM_frequency', wv.intWatch,     10000,          True),      # requested PWM frequency - see pigpio docs
+               ('drive_actual_frequency',wv.intWatch,   0,              False),     # frequency actually used
+               ('drive_hold_power', wv.floatWatch,      .3,             True, {'minv':.1, 'maxv':1}),   # power factor used when stationary
+               ('drive_slow_power', wv.floatWatch,      .7,             True, {'minv':.1, 'maxv':1}),   # power factor when slow stepping
+               ('drive_slow_limit', wv.floatWatch,      .01,            True),                          # step interval above which slow power factor used
+               ('drive_fast_power', wv.floatWatch,      1,              True, {'minv':.1, 'maxv':1}),   # power factor when faster stepping
+               ('drive_step_intvl', wv.floatWatch,      float('nan'),   False),     # step interval currently in use ('nan' when stopped)
+               ('drive_target_intvl',wv.floatWatch,     .05,            True),      # once moving this will be the interval
+               ('drive_target_pos', wv.intWatch,        0,              False),     # for goto mode - where we want to be
+               ('drive_backlash',   wv.intWatch,        40,             True),      # primitive backlash adjustment
+        ]
+        if app is None:
+            wables.append(('save_settingsbtn', wv.btnWatch,        'Save settings',False))
+        super().__init__(app=app, wabledefs=wables, **kwargs)
+        self.pins=[int(p) for p in self.drive_pins.getValue().split()]
+        assert len(self.pins) == 4
+        for i in self.pins:
+            assert isinstance(i, int) and 0<i<32
+        if app is None:
+            self.save_settingsbtn.addNotify(self.savesettings, wv.myagents.user)  # this function is in the ancestor class, but we add the ability to use it here
         self.monthread=threading.Thread(name='cammon', target=self.run)
         self.monthread.start()
 
@@ -156,14 +139,6 @@ class SimpleUniStepper(wv.watchableApp):
         return thisentry
 
     def run(self):
-        if self.pio is None:
-            self.mypio=True
-            self.pio=pigpio.pi()
-        else:
-            self.mypio=False
-        if not self.pio.connected:
-            raise ValueError('no pigpio connection available')
-            return
         for p in self.pins:
             self.pio.set_PWM_frequency(p, self.drive_PWM_frequency.getValue())
         self.drive_actual_frequency.setValue(self.pio.get_PWM_frequency(self.pins[0]), agent=wv.myagents.app)
@@ -175,6 +150,7 @@ class SimpleUniStepper(wv.watchableApp):
         lastentry=None
         stepindex=0  # index into the array of pin pwm values  - used to set new pwm values on each step
         gotoisfwd=True;
+        self.log(wv.loglvls.INFO,'stepper driver ready')
         while self.running:
             delay=nextsteptime-time.time()
             if delay > .25:
@@ -231,13 +207,10 @@ class SimpleUniStepper(wv.watchableApp):
                 currentStepMode = self.drive_stepmode.getValue()
                 usetable, stepfactor =self._maketable(currentStepMode)
 
-#        print('motor thread shutting down')
         for p in self.pins:
             self.pio.set_PWM_dutycycle(p,0)
-        if self.mypio:
-            self.pio.stop()
-            self.mypio=False
-        self.pio=None
+        super().close()
+        self.log(wv.loglvls.INFO,'stepper driver thread exits')
 
     def _maketable(self, stepmode):
         newSpeed= self.drive_target_intvl.getValue()
@@ -271,10 +244,3 @@ class SimpleUniStepper(wv.watchableApp):
 
     def close(self):
         self.running=False
-
-    def log(self, loglevel, *args, **kwargs):
-        """
-        request a logging operation. This does nothing if the given loglevel is < the loglevel set in the object
-        """
-        if self.loglevel.value <= loglevel.value:
-            self.camapp.log(loglevel, *args, **kwargs)
