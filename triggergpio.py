@@ -50,7 +50,6 @@ class gpiotrigger(wv.watchablepigpio):
             else:
                 self.pio.set_glitch_filter(monpin, steady)
         self.pigpcb=self.pio.callback(monpin, pigpio.EITHER_EDGE, self.level_change_detected)
-        
         self.usertrigger.addNotify(self.usersetclear,  wv.myagents.user)
         self.startstopbtn.addNotify(self.startstop,  wv.myagents.user)
         if app is None:

@@ -30,7 +30,7 @@ class VideoRecorder(wv.watchableAct):
             ('recordcount', wv.intWatch,        0,                  False,      {},),
             ('lasttrigger', wv.floatWatch,      float('nan'),       False,      {}),
             ('recordnow',   wv.enumWatch,       'start recording',  False,      {'vlist': ('start recording', 'stop recording')}),
-            ('cpudetect',   wv.enumWatch,       'off',              True,       {'vlist': ('off', 'on'), 'flags': wv.wflags.NONE if 'triggercpu' in app.activities else wv.wflags.DISABLED}),
+            ('cpudetect',   wv.enumWatch,       'off',              True,       {'vlist': ('off', 'on'), 'flags': wv.wflags.NONE if 'cpumove' in app.activities else wv.wflags.DISABLED}),
             ('gpiodetect',  wv.enumWatch,       'off',              True,       {'vlist': ('off', 'on'), 'flags': wv.wflags.NONE if 'triggergpio' in app.activities else wv.wflags.DISABLED}),
             ('saveh264',    wv.enumWatch,       'off',              True,       {'vlist': ('off', 'on')}),
             ('splitrecord', wv.floatWatch,      0,                  True,       {'minv': 0, 'maxv': 30}),
@@ -71,12 +71,24 @@ class VideoRecorder(wv.watchableAct):
         fp.parent.mkdir(parents=True, exist_ok=True)
         return fp
 
-    def trigsetchange(self, var, agent, newValue, oldValue):
+    def trigsetchange(self, watched, agent, newValue, oldValue):
         """
         called if the user changes a 'use xxx detection' setting
         """
-        pass
-        
+        if self.status.getIndex() != 1:
+            if watched == self.cpudetect:
+                target=self.app.activities['cpumove'].status
+                if watched.getIndex()==1:
+                    self.settrigger(target, lambda wable : wable.getIndex() == 2)
+                else:
+                    self.cleartrigger(target)
+            elif watched==self.gpiodetect:
+                target=self.app.activities['triggergpio'].status
+                if watched.getIndex()==1:
+                    self.settrigger(target, lambda wable : wable.getIndex() == 2)
+                else:
+                    self.cleartrigger(target)
+
     def settrigger(self, wable, onexp):
         """
         adds a variable to watch to the set of triggers.
@@ -138,8 +150,8 @@ class VideoRecorder(wv.watchableAct):
             recorder='none'
             circstream=None
         self.settrigger(self.recordnow, lambda wable : wable.getIndex() == 1 )
-#        if self.cpudetect.getValue():
-#            self.settrigger('/activities/cpumove/status', lambda wable : wable.getIndex() > 1)
+        if self.cpudetect.getIndex()==1:
+            self.settrigger(self.app.activities['cpumove'].status, lambda wable : wable.getIndex() == 2)
         if self.gpiodetect.getIndex()==1:
             self.settrigger(self.app.activities['triggergpio'].status, lambda wable : wable.getIndex() == 2)
         time.sleep(.1)
@@ -327,10 +339,3 @@ class VideoRecorder(wv.watchableAct):
                 else:
                     self.log(wv.loglvls.WARN, 'MP4Box stderr:'+str(errs))
                     print('MP4Box stderr:'+str(errs))            
-
-#    def log(self, loglevel, *args, **kwargs):
-#        """
-#        request a logging operation. This does nothing if the given loglevel is < the loglevel set in the object
-#        """
-#        if self.loglevel.value <= loglevel.value:
-#            self.app.log(loglevel, *args, **kwargs)

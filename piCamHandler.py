@@ -190,7 +190,6 @@ class camISO(picamAttrMixin, wv.enumWatch):
             **kwargs)
 
     def validValue(self, value, agent):
-        print('iso got value %s of type %s' % (value, type(value).__name__))
         return super().validValue(int(value), agent)
 
 class camFract(picamAttrMixin, wv.floatWatch):
@@ -265,9 +264,6 @@ class cameraManager(wv.watchablesmart):
         if 'camstream' in acts:
             from piCamStreamWeb import webStream
             self.activities['camstream'] = webStream(app=self, value=actsettings.get('camstream',{}))
-        if 'triggervid' in acts:
-            from piCamRecordWeb import webVideoRec
-            self.activities['triggervid'] = webVideoRec(app=self, value=actsettings.get('triggervid',{}))
         if 'triggergpio' in acts:
             from triggergpioweb import webtriggergpio
             self.activities['triggergpio'] = webtriggergpio(app=self, value=actsettings.get('triggergpio', {}))
@@ -277,6 +273,9 @@ class cameraManager(wv.watchablesmart):
         if 'focusser' in acts:
             from unipolarDirectWeb import webStepper
             self.activities['focusser'] = webStepper(app=self, value=actsettings.get('focusser', {}))
+        if 'triggervid' in acts:
+            from piCamRecordWeb import webVideoRec
+            self.activities['triggervid'] = webVideoRec(app=self, value=actsettings.get('triggervid',{}))
         self.log(wv.loglvls.INFO,'closed camera after setup')
         threading.Thread(name='cammon', target=self.monitorloop).start()
 
