@@ -20,7 +20,7 @@ class fileManager(wv.watchablesmart):
         self.fthread.start()
 
     def make_page(self, pagelist, qp, pp, page):
-        if self.currentfiles is None:
+        if self.currentfiles is None or 'refresh' in qp:
             self.currentfiles=filething(root=self.basefoldervar.getValue())
             self.filetime=time.time()
         with open(page, 'r') as pf:
