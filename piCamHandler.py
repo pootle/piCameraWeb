@@ -199,8 +199,6 @@ class camFract(picamAttrMixin, wv.floatWatch):
     def validValue(self, value, agent):
         return super().validValue(value.numerator/value.denominator if isinstance(value, fractions.Fraction) else value, agent)
 
-
-
 class cameraManager(wv.watchablesmart):
     """
     This class prepares all the settings that can be applied to a picamera.PiCamera and manages the running camera
@@ -231,7 +229,7 @@ class cameraManager(wv.watchablesmart):
             ('cam_contrast',    camInt,             0,      True,   {'camAttr': 'contrast', 'readOK': False, 'writeOK': True}),
             ('cam_brightness',  camInt,             50,     True,   {'camAttr': 'brightness', 'readOK': False, 'writeOK': True}),
             ('cam_exp_comp',    camInt,             0,      True,   {'camAttr': 'exposure_compensation', 'readOK': False, 'writeOK': True}),
-            ('cam_iso',         camISO,             0,      True),
+            ('cam_iso',         camISO,             0,      False),
             ('cam_exp_speed',   camInt,             0,      False,  {'camAttr': 'exposure_speed', 'readOK': True, 'writeOK': False}),
             ('cam_shutter_speed',camInt,            0,      True,   {'camAttr': 'shutter_speed', 'readOK': False, 'writeOK': True}),
             ('cam_analog_gain', camFract,           0,      False,  {'camAttr': 'analog_gain', 'readOK': True, 'writeOK': False}),
@@ -240,6 +238,7 @@ class cameraManager(wv.watchablesmart):
             ('zoomright',       wv.floatWatch,      1,      True,   {'maxv': 1, 'minv': 0}),
             ('zoomtop',         wv.floatWatch,      0,      True,   {'maxv': 1, 'minv': 0}),
             ('zoombottom',      wv.floatWatch,      1,      True,   {'maxv': 1, 'minv': 0}),
+            ('live_view',       wv.enumWatch,       'preview on',  True,   {'vlist': ('preview on', 'preview off')}),
             ('cam_state',       wv.enumWatch,       'closed',False, {'vlist': ('open', 'closed'), 'wrap': False, 'clamp': False}),
             ('cam_summary',     wv.textWatch,       'closed',False),
             ('cam_autoclose',   wv.enumWatch,       'auto close', True, {'vlist': ('keep open', 'auto close')}),
@@ -259,6 +258,7 @@ class cameraManager(wv.watchablesmart):
         self.zoomright.addNotify(self.newzoom, wv.myagents.user)
         self.zoomtop.addNotify(self.newzoom, wv.myagents.user)
         self.zoombottom.addNotify(self.newzoom, wv.myagents.user)
+        self.live_view.addNotify(self.liveviewupd, wv.myagents.user)
         self.activities={}
         actsettings=self.startsettings.get('acts', {})
         if 'camstream' in acts:
@@ -362,6 +362,16 @@ class cameraManager(wv.watchablesmart):
             zh=self.zoombottom.getValue()-zy
             self.picam.zoom=(zx,zy,zw,zh)
 
+    def liveviewupd(self, watched, agent, newValue, oldValue):
+        if watched.getIndex() == 1:
+            # turn on live view
+            self.startCamera()
+            time.sleep(.3)
+            self.picam.start_preview()
+        else:
+            if not self.picam is None:
+                self.picam.stop_preview()
+
     def force_close(self, oldValue, newValue, agent, watched):
         self.stopCamera()
 
@@ -391,15 +401,16 @@ class cameraManager(wv.watchablesmart):
                 self.cam_analog_gain.getValue()
                 self.cam_digital_gain.getValue()
                 if self.cam_autoclose.getIndex() > 0:
-                    for port in self.activityports:
-                        if port:
-                            break
-                    else:
-                        if camtimeout is None:
-                            camtimeout=time.time()+20
-                        elif time.time() > camtimeout: 
-                            self.stopCamera()
-                            camtimeout=None
+                    if self.live_view.getIndex() == 0:
+                        for port in self.activityports:
+                            if port:
+                                break
+                        else:
+                            if camtimeout is None:
+                                camtimeout=time.time()+20
+                            elif time.time() > camtimeout: 
+                                self.stopCamera()
+                                camtimeout=None
         self.log(wv.loglvls.INFO,"cameraManager runloop closing down")
         self.stopCamera()
         self.log(wv.loglvls.INFO,"cameraManager runloop finished")

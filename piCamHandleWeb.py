@@ -10,6 +10,9 @@ class piCamWeb(piCamHandler.cameraManager):
             'pageid'        : pagelist.pageid,
             'camstat'       : pagelink.wwlink(wable=self.cam_summary, pagelist=pagelist, updators=myagents.app,
                 label = 'camera state', shelp='shows if camera is active').webitem(fformat=spanfieldinputhtml),
+            'prevbut'       : pagelink.wwenumbtn(wable=self.live_view, pagelist=pagelist, updators=myagents.user).webitem(
+                        fformat={'all': '{wfield}', 'fieldu': '<div class="btnlike" style="border-left:15px; width: 135px;" {tattrs}>{wl.webvalue}</div>'}),
+                
             'camsettings'   : tablesectwrapper.format(style='camsetstyle', flipid='xcamset', fields=self.allfields(pagelist=pagelist, fielddefs=allfielddefs),
                                                      title='Camera Settings'),
             'actparts'      : ''.join(panels),
@@ -33,9 +36,9 @@ allfielddefs=(
                                     'camera resolution with standard values that try to use the full frame - only takes effect when camera (re)starts)',
                                     {'doclink': 'https://picamera.readthedocs.io/en/release-1.13/fov.html#camera-modes'}),
     (pagelink.wwlink, 'cam_u_width', myagents.user,  'special width',   tablefieldinputhtml,
-                                    'user defined camera width (when resolution is "special" may zoom the image)', {'liveformat': '{wl.varvalue:4d}',}),
+                                    "user defined camera width (when resolution is 'special' may zoom the image)", {'liveformat': '{wl.varvalue:4d}',}),
     (pagelink.wwlink, 'cam_u_height', myagents.user, 'special height',   tablefieldinputhtml,
-                                    'user defined camera height (when resolution is "special" may zoom the image)', {'liveformat': '{wl.varvalue:4d}'}),
+                                    "user defined camera height (when resolution is 'special' may zoom the image)", {'liveformat': '{wl.varvalue:4d}'}),
     (pagelink.wwenum, 'cam_rotation', myagents.user, 'image rotation',  tablefielddropdnhtml,   'allows the image to be rotated in 90 degree increments',
                                     {'doclink': 'https://picamera.readthedocs.io/en/release-1.13/api_camera.html#picamera.PiCamera.rotation'}),
     (pagelink.wwenum, 'cam_hflip', myagents.user,    'horizontal flip', tablefielddropdnhtml,  'flip image left<->right'),
