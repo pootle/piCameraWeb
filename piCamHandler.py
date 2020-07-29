@@ -123,13 +123,15 @@ class camResolution(wv.enumWatch):
     
     This class does not use picamAttrMixin as the value is only set as we create a new PiCamera instance.
     """
+    HQcam=(('special', '4056x3040', '2028x1520', '1012x760', '1080p', '720p', '480p'),'2028x1520')
     resolutions={
         'ov5647' : (('special', '3280x2464', '1640x1232', '1640x922', '1920x1080', '1280x720', '640x480'),
                     '1640x1232'),
                     
         'imx219' : (('special', '2592x1944','1296x972','640x480'),
                     '1296x972'),
-        'testc'  : (('special', '4056x3040', '2028x1520', '1012x760', '1080p', '720p', '480p'),'2028x1520')
+        'testc'  : HQcam,
+        'imx477' : HQcam
         }
 
     def __init__(self, app, value, **kwargs):
